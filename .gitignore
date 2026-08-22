@@ -1,37 +1,22 @@
-# Dependencies
+# Node dependencies
 node_modules/
-.pnp
-.pnp.js
+backend/node_modules/
+frontend/node_modules/
 
-# Build output
-dist/
-dist-ssr/
-build/
-
-# Environment files (never commit secrets)
+# Environment files
 .env
-.env.local
-.env.production
+backend/.env
+*.env
 
-# Logs
-*.log
+# Logs & temp files
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
+logs/
+*.log
 
-# Editor
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# OS
+# OS & Editor metadata
 .DS_Store
 Thumbs.db
-
-# Vite cache
-.vite/
+.vscode/
+.idea/
