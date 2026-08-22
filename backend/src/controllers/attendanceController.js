@@ -165,3 +165,24 @@ exports.getAttendanceByEmployeeId = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get today's attendance record for logged-in user
+// @route   GET /api/attendance/status/today
+// @access  Private
+exports.getTodayAttendance = async (req, res, next) => {
+  try {
+    const today = getTodayDateString();
+    const record = await Attendance.findOne({
+      employeeId: req.user.employeeId,
+      date: today
+    });
+
+    res.status(200).json({
+      success: true,
+      attendance: record || null,
+      date: today
+    });
+  } catch (error) {
+    next(error);
+  }
+};

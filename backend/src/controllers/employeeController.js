@@ -101,3 +101,50 @@ exports.updateEmployee = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get current logged-in employee profile
+// @route   GET /api/employees/me
+// @access  Private
+exports.getMyProfile = async (req, res, next) => {
+  try {
+    const employee = await Employee.findOne({ userId: req.user.id }).populate('userId', 'email role emailVerified');
+    if (!employee) {
+      return res.status(404).json({ success: false, message: 'Employee profile not found' });
+    }
+    res.status(200).json({ success: true, profile: employee });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update current logged-in employee profile (Restricted fields)
+// @route   PATCH /api/employees/me
+// @access  Private
+exports.updateMyProfile = async (req, res, next) => {
+  try {
+    const employee = await Employee.findOne({ userId: req.user.id });
+    if (!employee) {
+      return res.status(404).json({ success: false, message: 'Employee profile not found' });
+    }
+
+    const { phone, address, profilePicture } = req.body;
+    let updateData = {};
+    if (phone !== undefined) updateData.phone = phone;
+    if (address !== undefined) updateData.address = address;
+    if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
+
+    const updatedEmployee = await Employee.findByIdAndUpdate(
+      employee._id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).populate('userId', 'email role');
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      profile: updatedEmployee
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -5,6 +5,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import { LoadingState, EmptyState } from '../../components/ui/States';
 import { formatDate, formatTime, formatHours, todayString } from '../../utils/dateUtils';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 export default function Attendance() {
   const [todayAtt, setTodayAtt]       = useState(null);
@@ -26,18 +27,30 @@ export default function Attendance() {
 
   const handleCheckIn = async () => {
     setCheckingIn(true);
-    const res = await mockService.checkIn();
-    setTodayAtt(res.data);
-    toast.success('Checked in!');
-    setCheckingIn(false);
+    try {
+      const res = await mockService.checkIn();
+      setTodayAtt(res.data);
+      toast.success('Checked in successfully!');
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Check-in failed. Please try again.';
+      toast.error(msg);
+    } finally {
+      setCheckingIn(false);
+    }
   };
 
   const handleCheckOut = async () => {
     setCheckingOut(true);
-    const res = await mockService.checkOut();
-    setTodayAtt(res.data);
-    toast.success('Checked out. Great work today!');
-    setCheckingOut(false);
+    try {
+      const res = await mockService.checkOut();
+      setTodayAtt(res.data);
+      toast.success('Checked out. Great work today!');
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Check-out failed. Please try again.';
+      toast.error(msg);
+    } finally {
+      setCheckingOut(false);
+    }
   };
 
   const isCheckedIn  = !!todayAtt?.checkIn;
@@ -49,8 +62,10 @@ export default function Attendance() {
     return true;
   });
 
+  // Normalise to uppercase for counting — backend returns uppercase statuses
   const statusCounts = records.reduce((acc, r) => {
-    acc[r.status] = (acc[r.status] ?? 0) + 1;
+    const key = (r.status || '').toUpperCase();
+    acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});
 
@@ -106,10 +121,10 @@ export default function Attendance() {
       {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { key: 'present',   label: 'Present',   color: 'bg-success-50 text-success-700 border-success-100' },
-          { key: 'absent',    label: 'Absent',    color: 'bg-danger-50  text-danger-700  border-danger-100'  },
-          { key: 'half-day',  label: 'Half Day',  color: 'bg-warning-50 text-warning-700 border-warning-100' },
-          { key: 'leave',     label: 'On Leave',  color: 'bg-primary-50 text-primary-700 border-primary-100' },
+          { key: 'PRESENT',  label: 'Present',  color: 'bg-success-50 text-success-700 border-success-100' },
+          { key: 'ABSENT',   label: 'Absent',   color: 'bg-danger-50  text-danger-700  border-danger-100'  },
+          { key: 'HALF_DAY', label: 'Half Day', color: 'bg-warning-50 text-warning-700 border-warning-100' },
+          { key: 'LEAVE',    label: 'On Leave', color: 'bg-primary-50 text-primary-700 border-primary-100' },
         ].map(({ key, label, color }) => (
           <div key={key} className={`card border ${color} flex items-center justify-between p-4`}>
             <span className="text-sm font-medium">{label}</span>

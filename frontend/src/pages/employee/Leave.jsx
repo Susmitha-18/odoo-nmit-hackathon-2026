@@ -48,12 +48,17 @@ export default function Leave() {
     e.preventDefault();
     if (!validate()) return;
     setIsSubmitting(true);
-    const res = await mockService.applyLeave(formData);
-    setLeaves((p) => [res.data, ...p]);
-    toast.success('Leave request submitted!');
-    setShowModal(false);
-    setFormData(INITIAL_FORM);
-    setIsSubmitting(false);
+    try {
+      const res = await mockService.applyLeave(formData);
+      setLeaves((p) => [res.data, ...p]);
+      toast.success('Leave request submitted successfully!');
+      setShowModal(false);
+      setFormData(INITIAL_FORM);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to submit leave request.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (field) => (e) => {

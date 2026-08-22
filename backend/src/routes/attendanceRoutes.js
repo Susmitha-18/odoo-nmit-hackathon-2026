@@ -5,12 +5,14 @@ const {
   checkOut,
   getMyAttendance,
   getAllAttendance,
-  getAttendanceByEmployeeId
+  getAttendanceByEmployeeId,
+  getTodayAttendance
 } = require('../controllers/attendanceController');
 const { requireAuth, requireRole } = require('../middleware/authMiddleware');
 
 router.post('/check-in', requireAuth, checkIn);
 router.post('/check-out', requireAuth, checkOut);
+router.get('/status/today', requireAuth, getTodayAttendance);
 router.get('/me', requireAuth, getMyAttendance);
 router.get('/all', requireAuth, requireRole('ADMIN'), getAllAttendance);
 router.get('/employee/:employeeId', requireAuth, getAttendanceByEmployeeId);

@@ -38,18 +38,28 @@ export default function Dashboard() {
 
   const handleCheckIn = async () => {
     setCheckingIn(true);
-    const res = await mockService.checkIn();
-    setTodayAtt(res.data);
-    toast.success('Checked in successfully!');
-    setCheckingIn(false);
+    try {
+      const res = await mockService.checkIn();
+      setTodayAtt(res.data);
+      toast.success('Checked in successfully!');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Check-in failed.');
+    } finally {
+      setCheckingIn(false);
+    }
   };
 
   const handleCheckOut = async () => {
     setCheckingOut(true);
-    const res = await mockService.checkOut();
-    setTodayAtt(res.data);
-    toast.success('Checked out. Have a great evening!');
-    setCheckingOut(false);
+    try {
+      const res = await mockService.checkOut();
+      setTodayAtt(res.data);
+      toast.success('Checked out. Have a great evening!');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Check-out failed.');
+    } finally {
+      setCheckingOut(false);
+    }
   };
 
   const pendingLeaves  = leaves.filter((l) => l.status?.toUpperCase() === 'PENDING').length;

@@ -1,27 +1,39 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LoadingState } from '../components/ui/States';
 
 /**
- * ProtectedRoute — Enforces JWT presence and checks role permissions.
- * Redirects unauthorized requests to /login or role-appropriate root.
+ * ProtectedRoute
+ * - Shows loading spinner while session is being verified
+ * - Redirects unauthenticated users to /login (preserves intended path)
+ * - Redirects authenticated users who access wrong role portal to their own portal
  */
 export default function ProtectedRoute({ children, role }) {
   const { isAuthenticated, user, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
-    return <LoadingState message="Verifying session authorizations..." fullScreen />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FAFBFC]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-500 font-medium">Verifying session…</p>
+        </div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Preserve the intended URL so we can redirect back after login
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Enforce server-matched role checking (ADMIN vs EMPLOYEE uppercase comparison)
-  if (role && user?.role !== role.toUpperCase()) {
-    console.warn(`Unauthorized role access attempt: user role ${user?.role} does not match required role ${role}`);
-    return <Navigate to={user?.role === 'ADMIN' ? '/admin/dashboard' : '/employee/dashboard'} replace />;
+  // Strict role enforcement — compare uppercase from backend
+  const requiredRole = role?.toUpperCase();
+  if (requiredRole && user?.role !== requiredRole) {
+    // Send them to their own portal dashboard
+    const redirectTo = user?.role === 'ADMIN' ? '/admin/dashboard' : '/employee/dashboard';
+    return <Navigate to={redirectTo} replace />;
   }
 
   return children;

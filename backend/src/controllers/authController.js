@@ -114,16 +114,23 @@ exports.login = async (req, res, next) => {
 exports.getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Session expired' });
+    }
     const employee = await Employee.findOne({ userId: req.user.id });
 
     res.status(200).json({
       success: true,
       user: {
-        id: user._id,
-        employeeId: user.employeeId,
-        email: user.email,
-        role: user.role,
-        employee
+        id:            user._id,
+        employeeId:    user.employeeId,
+        email:         user.email,
+        role:          user.role,
+        fullName:      employee?.fullName || user.email,
+        department:    employee?.department || '',
+        designation:   employee?.designation || '',
+        profilePicture: employee?.profilePicture || '',
+        employee:      employee || null,
       }
     });
   } catch (error) {
