@@ -1,33 +1,40 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const baseURL = import.meta.env.VITE_API_URL || '/api';
 
 const axiosInstance = axios.create({
-  baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 10000,
+  baseURL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Request interceptor: attach JWT
+// Request Interceptor: Attach JWT Token from localStorage
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('dayflow_token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-// Response interceptor: handle auth errors globally
+// Response Interceptor: Global Error Handling
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // If unauthorized, clean up token and we can let the context handler handle redirecting
+    if (error.response && error.response.status === 401) {
       localStorage.removeItem('dayflow_token');
       localStorage.removeItem('dayflow_user');
-      window.location.href = '/login';
+      // If we are not on login page, we can redirect
+      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+        window.location.href = '/login?expired=true';
+      }
     }
     return Promise.reject(error);
   }

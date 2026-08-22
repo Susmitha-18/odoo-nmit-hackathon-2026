@@ -1,271 +1,225 @@
-import { useState, useEffect, useCallback } from 'react';
-import { toast } from 'react-hot-toast';
-import { CheckCircle, XCircle, Clock, CalendarCheck } from 'lucide-react';
-import AdminLayout from '../../components/layout/AdminLayout';
-import PageHeader from '../../components/ui/PageHeader';
+import React, { useEffect, useState } from 'react';
+import { getAllLeavesAPI, handleLeaveDecisionAPI } from '../../api/leave.api';
+import { useToast } from '../../context/ToastContext';
+import { Check, X, FileText, AlertCircle, HelpCircle } from 'lucide-react';
 import DataTable from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
-import Avatar from '../../components/ui/Avatar';
-import ErrorState from '../../components/ui/ErrorState';
 import ConfirmationModal from '../../components/modals/ConfirmationModal';
 import RejectLeaveModal from '../../components/modals/RejectLeaveModal';
-import { leaveApi } from '../../api/leave.api';
-import { formatDate, timeAgo } from '../../utils/dateUtils';
-import { formatLeaveType, getErrorMessage, truncate } from '../../utils/formatUtils';
+import LoadingState from '../../components/ui/LoadingState';
+import ErrorState from '../../components/ui/ErrorState';
+import PageHeader from '../../components/ui/PageHeader';
 
-const TABS = [
-  { key: 'Pending',  label: 'Pending',  icon: Clock },
-  { key: 'Approved', label: 'Approved', icon: CheckCircle },
-  { key: 'Rejected', label: 'Rejected', icon: XCircle },
-];
-
-export default function LeaveManagement() {
-  const [activeTab, setActiveTab] = useState('Pending');
-  const [leaves, setLeaves] = useState([]);
+const LeaveManagement = () => {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+  const [leaves, setLeaves] = useState([]);
+  const [activeTab, setActiveTab] = useState('Pending'); // 'Pending', 'Approved', 'Rejected'
 
-  // Modal state
-  const [approveModal, setApproveModal] = useState({ open: false, leave: null });
-  const [rejectModal, setRejectModal] = useState({ open: false, leave: null });
-  const [actionLoading, setActionLoading] = useState(false);
+  // Modals state
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [selectedLeaveId, setSelectedLeaveId] = useState(null);
 
-  const load = useCallback(async () => {
+  const fetchLeaves = async () => {
     setLoading(true);
-    setError(null);
     try {
-      const data = await leaveApi.getAll({ status: activeTab });
-      setLeaves(data);
+      setError('');
+      const res = await getAllLeavesAPI();
+      if (res.success) {
+        setLeaves(res.leaves || []);
+      }
     } catch (err) {
-      setError(getErrorMessage(err));
+      console.error(err);
+      setError('Unable to load employee leave queues.');
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  };
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    fetchLeaves();
+  }, []);
 
-  // ── Approve ──────────────────────────────────────────────────────────────────
-  const handleApprove = async () => {
-    setActionLoading(true);
+  const handleApproveConfirm = async () => {
+    setApproveModalOpen(false);
     try {
-      await leaveApi.approve(approveModal.leave._id, '');
-      toast.success(`Leave approved for ${approveModal.leave.employeeName}.`);
-      setApproveModal({ open: false, leave: null });
-      load();
+      const res = await handleLeaveDecisionAPI(selectedLeaveId, 'Approved', 'Approved by HR Admin');
+      if (res.success) {
+        showToast('Leave request approved successfully!', 'success');
+        fetchLeaves();
+      } else {
+        showToast(res.message || 'Failed to approve request.', 'error');
+      }
     } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setActionLoading(false);
+      showToast(err.response?.data?.message || 'Server error approving request.', 'error');
     }
   };
 
-  // ── Reject ───────────────────────────────────────────────────────────────────
-  const handleReject = async (comment) => {
-    setActionLoading(true);
+  const handleRejectConfirm = async (comment) => {
+    setRejectModalOpen(false);
     try {
-      await leaveApi.reject(rejectModal.leave._id, comment);
-      toast.success(`Leave rejected for ${rejectModal.leave.employeeName}.`);
-      setRejectModal({ open: false, leave: null });
-      load();
+      const res = await handleLeaveDecisionAPI(selectedLeaveId, 'Rejected', comment);
+      if (res.success) {
+        showToast('Leave request rejected.', 'success');
+        fetchLeaves();
+      } else {
+        showToast(res.message || 'Failed to reject request.', 'error');
+      }
     } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setActionLoading(false);
+      showToast(err.response?.data?.message || 'Server error rejecting request.', 'error');
     }
   };
 
-  // Duration helper
-  const calcDays = (start, end) => {
-    const diff = new Date(end) - new Date(start);
-    const days = Math.floor(diff / 86400000) + 1;
-    return `${days} day${days !== 1 ? 's' : ''}`;
-  };
+  // Filter requests by active tab
+  const filteredLeaves = leaves.filter((l) => (l.status || '').toUpperCase() === activeTab.toUpperCase());
 
-  // Get display name from leave record
-  const getEmployeeName = (row) => {
-    if (row.applicant?.email) return row.applicant.email.split('@')[0];
-    return row.employeeId || 'Employee';
-  };
-
-  // Table columns per tab
-  const baseColumns = [
+  const columns = [
     {
-      key: 'employee',
-      label: 'Employee',
-      render: (row) => (
-        <div className="flex items-center gap-2.5">
-          <Avatar firstName={row.employeeId} lastName="" size="sm" />
-          <div>
-            <p className="text-sm font-medium text-neutral-800">{getEmployeeName(row)}</p>
-            <p className="text-xs text-neutral-400">{row.employeeId}</p>
-          </div>
-        </div>
-      ),
+      header: 'Employee ID',
+      accessor: 'employeeId',
+      render: (row) => <span className="font-extrabold text-indigo-650">{row.employeeId}</span>,
     },
     {
-      key: 'leaveType',
-      label: 'Type',
-      render: (row) => <StatusBadge status={row.leaveType} />,
+      header: 'Leave Type',
+      accessor: 'leaveType',
+      render: (row) => {
+        let display = row.leaveType;
+        if (display === 'Paid') display = 'Paid Time Off (PTO)';
+        if (display === 'Sick') display = 'Sick Leave';
+        if (display === 'Unpaid') display = 'Unpaid Leave';
+        return <span className="font-semibold text-slate-700">{display}</span>;
+      },
     },
     {
-      key: 'dates',
-      label: 'Duration',
+      header: 'Dates / Duration',
+      accessor: 'totalDays',
       render: (row) => (
-        <div>
-          <p className="text-sm text-neutral-700">{formatDate(row.startDate)} → {formatDate(row.endDate)}</p>
-          <p className="text-xs text-neutral-400">{calcDays(row.startDate, row.endDate)}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'remarks',
-      label: 'Reason',
-      render: (row) => (
-        <span className="text-xs text-neutral-500 italic">
-          {row.reason ? `"${truncate(row.reason, 50)}"` : '—'}
+        <span className="text-slate-650 font-medium">
+          {new Date(row.startDate).toLocaleDateString()} to {new Date(row.endDate).toLocaleDateString()}{' '}
+          <span className="text-[10px] text-slate-400 font-bold">({row.totalDays} {row.totalDays === 1 ? 'day' : 'days'})</span>
         </span>
       ),
     },
     {
-      key: 'submitted',
-      label: 'Submitted',
-      render: (row) => (
-        <span className="text-xs text-neutral-400">{timeAgo(row.createdAt)}</span>
-      ),
+      header: 'Applicant Remarks',
+      accessor: 'remarks',
+      render: (row) => <span className="text-xs text-slate-550 italic max-w-sm truncate block">"{row.remarks || row.reason || 'No remarks'}"</span>,
     },
     {
-      key: 'status',
-      label: 'Status',
+      header: 'Status',
+      accessor: 'status',
       render: (row) => <StatusBadge status={row.status} />,
     },
+    ...(activeTab !== 'Pending'
+      ? [
+          {
+            header: 'HR Action Comments',
+            accessor: 'adminComment',
+            render: (row) => (
+              <span className="text-xs text-slate-500 font-medium leading-relaxed block max-w-xs truncate">
+                {row.adminComment || '—'}
+              </span>
+            ),
+          },
+        ]
+      : [
+          {
+            header: 'Actions',
+            accessor: '_id',
+            render: (row) => (
+              <div className="flex items-center space-x-2.5">
+                <button
+                  onClick={() => {
+                    setSelectedLeaveId(row._id);
+                    setApproveModalOpen(true);
+                  }}
+                  className="inline-flex items-center space-x-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-1.5 text-xs font-bold transition-all"
+                >
+                  <Check size={12} />
+                  <span>Approve</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedLeaveId(row._id);
+                    setRejectModalOpen(true);
+                  }}
+                  className="inline-flex items-center space-x-1 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 text-xs font-bold transition-all"
+                >
+                  <X size={12} />
+                  <span>Reject</span>
+                </button>
+              </div>
+            ),
+          },
+        ]),
   ];
 
-  const pendingActions = {
-    key: 'actions',
-    label: 'Actions',
-    render: (row) => (
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setApproveModal({ open: true, leave: {
-            ...row,
-            employeeName: getEmployeeName(row),
-          }})}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors"
-        >
-          <CheckCircle className="w-3.5 h-3.5" /> Approve
-        </button>
-        <button
-          onClick={() => setRejectModal({ open: true, leave: {
-            ...row,
-            employeeName: getEmployeeName(row),
-          }})}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
-        >
-          <XCircle className="w-3.5 h-3.5" /> Reject
-        </button>
-      </div>
-    ),
+  const counts = {
+    Pending: leaves.filter((l) => l.status === 'Pending').length,
+    Approved: leaves.filter((l) => l.status === 'Approved').length,
+    Rejected: leaves.filter((l) => l.status === 'Rejected').length,
   };
-
-  const reviewedColumn = {
-    key: 'adminComment',
-    label: 'Admin Comment',
-    render: (row) => (
-      <span className="text-xs text-neutral-500 italic">
-        {row.adminComment ? `"${truncate(row.adminComment, 60)}"` : '—'}
-      </span>
-    ),
-  };
-
-  const columns =
-    activeTab === 'Pending'
-      ? [...baseColumns, pendingActions]
-      : [...baseColumns, reviewedColumn];
-
-  const tabCounts = { pending: 0, approved: 0, rejected: 0 };
-  if (activeTab === 'pending') tabCounts.pending = leaves.length;
-  else if (activeTab === 'approved') tabCounts.approved = leaves.length;
-  else tabCounts.rejected = leaves.length;
 
   return (
-    <AdminLayout>
-      <PageHeader
-        title="Leave Management"
-        subtitle="Review, approve, or reject employee leave requests."
-        breadcrumb={[{ label: 'Admin' }, { label: 'Leave Requests' }]}
+    <div className="space-y-6">
+      {/* Title */}
+      <PageHeader 
+        title="Leave Approvals Queue" 
+        subtitle="Review employee absence requests, approve applications, or provide rejection remarks."
       />
 
-      {/* Tabs */}
-      <div className="bg-white rounded-xl border border-neutral-200 shadow-sm mb-4">
-        <div className="flex border-b border-neutral-100">
-          {TABS.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === key
-                  ? 'border-indigo-600 text-indigo-700'
-                  : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-200'
+      {/* Tabs list */}
+      <div className="flex border-b border-slate-200 space-x-6 text-sm font-semibold">
+        {['Pending', 'Approved', 'Rejected'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`py-3.5 relative flex items-center space-x-1.5 transition-colors ${
+              activeTab === tab
+                ? 'text-indigo-600 font-extrabold border-b-2 border-indigo-600'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <span>{tab} Requests</span>
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                activeTab === tab ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-550'
               }`}
             >
-              <Icon className="w-4 h-4" />
-              {label}
-              {!loading && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-                  activeTab === key ? 'bg-indigo-100 text-indigo-700' : 'bg-neutral-100 text-neutral-500'
-                }`}>
-                  {leaves.length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Table */}
-        {error ? (
-          <div className="p-5"><ErrorState message={error} onRetry={load} /></div>
-        ) : (
-          <DataTable
-            columns={columns}
-            data={leaves}
-            loading={loading}
-            emptyMessage={
-              activeTab === 'Pending'
-                ? 'No pending leave requests. All caught up!'
-                : activeTab === 'Approved'
-                ? 'No approved leave requests.'
-                : 'No rejected leave requests.'
-            }
-            emptyIcon={CalendarCheck}
-          />
-        )}
+              {counts[tab]}
+            </span>
+          </button>
+        ))}
       </div>
 
-      {/* Approve confirmation modal */}
-      <ConfirmationModal
-        isOpen={approveModal.open}
-        title="Approve Leave Request"
-        message={
-          approveModal.leave
-            ? `Approve ${formatLeaveType(approveModal.leave.leaveType)} for ${approveModal.leave.employeeName} from ${formatDate(approveModal.leave.startDate)} to ${formatDate(approveModal.leave.endDate)}?`
-            : ''
-        }
-        confirmLabel="Approve"
-        onConfirm={handleApprove}
-        onCancel={() => !actionLoading && setApproveModal({ open: false, leave: null })}
-        loading={actionLoading}
-        variant="default"
+      {/* Queue Data Grid */}
+      <DataTable
+        columns={columns}
+        data={filteredLeaves}
+        loading={loading}
+        emptyMessage={`No ${activeTab.toLowerCase()} leave requests found in queue.`}
       />
 
-      {/* Reject modal */}
-      <RejectLeaveModal
-        isOpen={rejectModal.open}
-        leaveRequest={rejectModal.leave}
-        onReject={handleReject}
-        onCancel={() => !actionLoading && setRejectModal({ open: false, leave: null })}
-        loading={actionLoading}
+      {/* Modals */}
+      <ConfirmationModal
+        isOpen={approveModalOpen}
+        title="Approve Leave Request"
+        message="Are you sure you want to approve this leave request? Approving will automatically flag attendance logs as 'Leave' for these shift dates."
+        type="success"
+        confirmText="Approve Leave"
+        onConfirm={handleApproveConfirm}
+        onCancel={() => setApproveModalOpen(false)}
       />
-    </AdminLayout>
+
+      <RejectLeaveModal
+        isOpen={rejectModalOpen}
+        onConfirm={handleRejectConfirm}
+        onCancel={() => setRejectModalOpen(false)}
+      />
+    </div>
   );
-}
+};
+
+export default LeaveManagement;

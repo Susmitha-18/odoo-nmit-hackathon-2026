@@ -1,235 +1,342 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Users, UserCheck, Umbrella, Clock, ChevronRight, TrendingUp } from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
-} from 'recharts';
-import AdminLayout from '../../components/layout/AdminLayout';
+import React, { useEffect, useState } from 'react';
+import { getAllEmployeesAPI } from '../../api/employee.api';
+import { getAllAttendanceAPI } from '../../api/attendance.api';
+import { getAllLeavesAPI } from '../../api/leave.api';
+import { Users, UserCheck, CalendarDays, Inbox, Clock, CalendarRange, RefreshCw } from 'lucide-react';
 import KpiCard from '../../components/ui/KpiCard';
+import { Link } from 'react-router-dom';
+import PageHeader from '../../components/ui/PageHeader';
+import Button from '../../components/ui/Button';
 import StatusBadge from '../../components/ui/StatusBadge';
-import LoadingState from '../../components/ui/LoadingState';
-import ErrorState from '../../components/ui/ErrorState';
-import Avatar from '../../components/ui/Avatar';
-import { dashboardApi } from '../../api/dashboard.api';
-import { employeeApi } from '../../api/employee.api';
-import { formatDate, timeAgo } from '../../utils/dateUtils';
-import { formatLeaveType, getFullName } from '../../utils/formatUtils';
 
-const PIE_COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444'];
+const AdminDashboard = () => {
+  // Loaders & Errors
+  const [empLoading, setEmpLoading] = useState(true);
+  const [empError, setEmpError] = useState('');
+  const [attLoading, setAttLoading] = useState(true);
+  const [attError, setAttError] = useState('');
+  const [leaveLoading, setLeaveLoading] = useState(true);
+  const [leaveError, setLeaveError] = useState('');
 
-export default function AdminDashboard() {
-  const navigate = useNavigate();
-  const [stats, setStats] = useState(null);
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Stats
+  const [totalEmployees, setTotalEmployees] = useState(0);
+  const [presentToday, setPresentToday] = useState(0);
+  const [onLeaveToday, setOnLeaveToday] = useState(0);
+  const [pendingLeavesCount, setPendingLeavesCount] = useState(0);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const [recentLeaves, setRecentLeaves] = useState([]);
+  const [recentAttendance, setRecentAttendance] = useState([]);
+  const [deptDistribution, setDeptDistribution] = useState({});
+
+  const loadEmployees = async () => {
+    setEmpLoading(true);
+    setEmpError('');
     try {
-      const [dashData, empData] = await Promise.all([
-        dashboardApi.getAdminSummary(),
-        employeeApi.getAll(),
-      ]);
-      setStats(dashData);
-      setEmployees(empData.slice(0, 5));
+      const empRes = await getAllEmployeesAPI();
+      if (empRes.success) {
+        setTotalEmployees(empRes.count || empRes.employees?.length || 0);
+        const depts = {};
+        empRes.employees?.forEach((e) => {
+          const dept = e.department || 'Other';
+          depts[dept] = (depts[dept] || 0) + 1;
+        });
+        setDeptDistribution(depts);
+      } else {
+        setEmpError('Unable to load employee statistics.');
+      }
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to load dashboard data.');
+      console.error(err);
+      setEmpError('Unable to load employee statistics.');
     } finally {
-      setLoading(false);
+      setEmpLoading(false);
     }
+  };
+
+  const loadAttendance = async () => {
+    setAttLoading(true);
+    setAttError('');
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const attTodayRes = await getAllAttendanceAPI({ date: todayStr });
+      if (attTodayRes.success) {
+        const todayLogs = attTodayRes.attendance || [];
+        const presentCount = todayLogs.filter(a => {
+          const s = (a.status || '').toUpperCase();
+          return s === 'PRESENT' || s === 'HALF_DAY';
+        }).length;
+        const leaveCount = todayLogs.filter(a => (a.status || '').toUpperCase() === 'LEAVE').length;
+
+        setPresentToday(presentCount);
+        setOnLeaveToday(leaveCount);
+        setRecentAttendance(todayLogs.slice(0, 5));
+      } else {
+        setAttError('Unable to load today\'s attendance.');
+      }
+    } catch (err) {
+      console.error(err);
+      setAttError('Unable to load today\'s attendance.');
+    } finally {
+      setAttLoading(false);
+    }
+  };
+
+  const loadLeaves = async () => {
+    setLeaveLoading(true);
+    setLeaveError('');
+    try {
+      const leaveRes = await getAllLeavesAPI();
+      if (leaveRes.success) {
+        const leavesList = leaveRes.leaves || [];
+        const pendingList = leavesList.filter(l => (l.status || '').toUpperCase() === 'PENDING');
+        setPendingLeavesCount(pendingList.length);
+        setRecentLeaves(pendingList.slice(0, 5));
+      } else {
+        setLeaveError('Unable to load leave requests.');
+      }
+    } catch (err) {
+      console.error(err);
+      setLeaveError('Unable to load leave requests.');
+    } finally {
+      setLeaveLoading(false);
+    }
+  };
+
+  const fetchDashboardData = () => {
+    loadEmployees();
+    loadAttendance();
+    loadLeaves();
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
   }, []);
 
-  useEffect(() => { load(); }, [load]);
-
-  if (loading) return <AdminLayout><LoadingState message="Loading dashboard..." /></AdminLayout>;
-  if (error) return <AdminLayout><ErrorState message={error} onRetry={load} /></AdminLayout>;
-
-  const kpis = [
-    {
-      title: 'Total Employees',
-      value: stats?.totalEmployees ?? 0,
-      icon: Users,
-      colorScheme: 'indigo',
-      subtitle: 'All active staff',
-    },
-    {
-      title: 'Present Today',
-      value: stats?.presentToday ?? 0,
-      icon: UserCheck,
-      colorScheme: 'emerald',
-      subtitle: `of ${stats?.totalEmployees} employees`,
-    },
-    {
-      title: 'On Leave Today',
-      value: stats?.onLeaveToday ?? 0,
-      icon: Umbrella,
-      colorScheme: 'amber',
-      subtitle: 'Approved leave',
-    },
-    {
-      title: 'Pending Requests',
-      value: stats?.pendingLeaveRequests ?? 0,
-      icon: Clock,
-      colorScheme: 'rose',
-      subtitle: 'Awaiting review',
-    },
-  ];
-
   return (
-    <AdminLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
+      <PageHeader 
+        title="HR Management Dashboard" 
+        subtitle="Real-time analytics and workforce administration overview."
+        action={
+          <Button 
+            onClick={fetchDashboardData}
+            variant="secondary"
+            className="p-2 h-10 w-10 !px-0 rounded-xl"
+            title="Refresh Dashboard Data"
+          >
+            <RefreshCw size={16} className={`${(empLoading || attLoading || leaveLoading) ? 'animate-spin' : ''}`} />
+          </Button>
+        }
+      />
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {kpis.map((kpi) => (
-            <KpiCard key={kpi.title} {...kpi} />
-          ))}
-        </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {empError ? (
+          <div className="bg-red-50/50 border border-red-100 rounded-2xl p-4 flex flex-col justify-between shadow-sm min-h-[96px]">
+            <span className="text-xs font-bold text-red-700">Employees Data Error</span>
+            <button onClick={loadEmployees} className="text-[10px] font-bold text-indigo-605 hover:underline text-left mt-2">Retry Loading</button>
+          </div>
+        ) : (
+          <KpiCard
+            title="Total Employees"
+            value={empLoading ? '...' : totalEmployees}
+            icon={Users}
+            color="indigo"
+          />
+        )}
 
-        {/* Charts row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {attError ? (
+          <div className="bg-red-50/50 border border-red-100 rounded-2xl p-4 flex flex-col justify-between shadow-sm min-h-[96px]">
+            <span className="text-xs font-bold text-red-700">Present Today Error</span>
+            <button onClick={loadAttendance} className="text-[10px] font-bold text-indigo-650 hover:underline text-left mt-2">Retry Loading</button>
+          </div>
+        ) : (
+          <KpiCard
+            title="Present Today"
+            value={attLoading ? '...' : presentToday}
+            icon={UserCheck}
+            color="emerald"
+          />
+        )}
 
-          {/* Attendance trend bar chart */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-neutral-200 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-sm font-semibold text-neutral-800">Weekly Attendance Overview</h3>
-                <p className="text-xs text-neutral-400 mt-0.5">Present / Absent / On Leave</p>
-              </div>
-              <TrendingUp className="w-4 h-4 text-neutral-300" />
+        {attError ? (
+          <div className="bg-red-50/50 border border-red-100 rounded-2xl p-4 flex flex-col justify-between shadow-sm min-h-[96px]">
+            <span className="text-xs font-bold text-red-700">On Leave Today Error</span>
+            <button onClick={loadAttendance} className="text-[10px] font-bold text-indigo-650 hover:underline text-left mt-2">Retry Loading</button>
+          </div>
+        ) : (
+          <KpiCard
+            title="On Leave Today"
+            value={attLoading ? '...' : onLeaveToday}
+            icon={CalendarRange}
+            color="blue"
+          />
+        )}
+
+        {leaveError ? (
+          <div className="bg-red-50/50 border border-red-100 rounded-2xl p-4 flex flex-col justify-between shadow-sm min-h-[96px]">
+            <span className="text-xs font-bold text-red-700">Pending Approvals Error</span>
+            <button onClick={loadLeaves} className="text-[10px] font-bold text-indigo-650 hover:underline text-left mt-2">Retry Loading</button>
+          </div>
+        ) : (
+          <KpiCard
+            title="Pending Approvals"
+            value={leaveLoading ? '...' : pendingLeavesCount}
+            icon={Inbox}
+            color="amber"
+          />
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Left Side: Leaves Pending and Department Distribution */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Leaves Pending */}
+          <div className="rounded-2xl border border-slate-205 bg-white p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <h3 className="text-sm font-bold text-slate-855 tracking-wider uppercase flex items-center space-x-2">
+                <span className="h-2 w-2 rounded-full bg-amber-500"></span>
+                <span>Pending Leave Queue</span>
+              </h3>
+              <Link to="/admin/leaves" className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline">
+                View Queue
+              </Link>
             </div>
-            {stats?.attendanceTrend?.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={stats.attendanceTrend} barSize={14} barGap={2}>
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
-                    cursor={{ fill: '#f3f4f6' }}
-                  />
-                  <Bar dataKey="present" name="Present" fill="#4f46e5" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="absent"  name="Absent"  fill="#f87171" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="leave"   name="On Leave" fill="#fbbf24" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[200px] flex items-center justify-center text-sm text-neutral-400">
-                No attendance data available.
+
+            {leaveLoading ? (
+              <div className="py-10 text-center text-xs text-slate-400">Loading leave requests...</div>
+            ) : leaveError ? (
+              <div className="py-10 text-center space-y-2">
+                <p className="text-xs text-red-650 font-semibold">{leaveError}</p>
+                <button onClick={loadLeaves} className="text-xs font-bold text-indigo-600 hover:underline">Try Again</button>
               </div>
+            ) : recentLeaves.length > 0 ? (
+              <div className="divide-y divide-slate-100">
+                {recentLeaves.map((l) => (
+                  <div key={l._id} className="flex items-center justify-between py-3">
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold text-slate-800">
+                        {l.userId?.email ? l.userId.email.split('@')[0].toUpperCase() : l.employeeId}
+                      </p>
+                      <p className="text-[10px] text-slate-500 font-medium">
+                        {l.leaveType} Leave • {l.totalDays} {l.totalDays === 1 ? 'day' : 'days'} ({new Date(l.startDate).toLocaleDateString()} - {new Date(l.endDate).toLocaleDateString()})
+                      </p>
+                      <p className="text-[10px] italic text-slate-400 font-medium truncate max-w-sm">
+                        "{l.remarks || 'No remarks provided'}"
+                      </p>
+                    </div>
+                    <Link
+                      to="/admin/leaves"
+                      className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-705 transition-colors"
+                    >
+                      Review
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center py-6 text-xs text-slate-405 italic">
+                All leave requests have been processed! No pending items.
+              </p>
             )}
           </div>
 
-          {/* Dept headcount pie */}
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-5">
-            <div className="mb-5">
-              <h3 className="text-sm font-semibold text-neutral-800">Headcount by Department</h3>
-              <p className="text-xs text-neutral-400 mt-0.5">Active employees</p>
+          {/* Department Distribution (CSS Bar Chart) */}
+          <div className="rounded-2xl border border-slate-205 bg-white p-6 shadow-sm space-y-5">
+            <div>
+              <h3 className="text-sm font-bold text-slate-850 tracking-wider uppercase border-b border-slate-100 pb-2.5">
+                Department Distribution
+              </h3>
             </div>
-            {stats?.departmentHeadcount?.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={stats.departmentHeadcount}
-                    dataKey="count"
-                    nameKey="department"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={70}
-                    innerRadius={40}
-                  >
-                    {stats.departmentHeadcount.map((_, idx) => (
-                      <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }} />
-                  <Legend
-                    iconSize={8}
-                    iconType="circle"
-                    wrapperStyle={{ fontSize: 11, paddingTop: 12 }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+
+            {empLoading ? (
+              <div className="py-10 text-center text-xs text-slate-400">Loading statistics...</div>
+            ) : empError ? (
+              <div className="py-10 text-center space-y-2">
+                <p className="text-xs text-red-650 font-semibold">{empError}</p>
+                <button onClick={loadEmployees} className="text-xs font-bold text-indigo-650 hover:underline">Try Again</button>
+              </div>
             ) : (
-              <div className="h-[200px] flex items-center justify-center text-sm text-neutral-400">
-                No data available.
+              <div className="space-y-4">
+                {Object.keys(deptDistribution).map((dept) => {
+                  const count = deptDistribution[dept];
+                  const percentage = totalEmployees > 0 ? (count / totalEmployees) * 100 : 0;
+
+                  return (
+                    <div key={dept} className="space-y-1 text-xs">
+                      <div className="flex justify-between font-semibold text-slate-700">
+                        <span>{dept}</span>
+                        <span>
+                          {count} {count === 1 ? 'employee' : 'employees'} ({percentage.toFixed(0)}%)
+                        </span>
+                      </div>
+                      {/* Progress Bar */}
+                      <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className="h-full bg-indigo-600 rounded-full transition-all duration-500"
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
 
-        {/* Bottom row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-          {/* Recent leave requests */}
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
-              <h3 className="text-sm font-semibold text-neutral-800">Recent Leave Requests</h3>
-              <button
-                onClick={() => navigate('/admin/leaves')}
-                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 transition-colors"
-              >
-                View all <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-            <div className="divide-y divide-neutral-50">
-              {stats?.recentLeaves?.length > 0 ? (
-                stats.recentLeaves.map((lv) => (
-                  <div key={lv._id} className="flex items-center justify-between px-5 py-3.5 hover:bg-neutral-50/60 transition-colors">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar firstName={lv.employeeName?.split(' ')[0]} lastName={lv.employeeName?.split(' ')[1]} size="sm" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-neutral-800 truncate">{lv.employeeName}</p>
-                        <p className="text-xs text-neutral-400">{formatLeaveType(lv.leaveType)} · {timeAgo(lv.createdAt)}</p>
-                      </div>
-                    </div>
-                    <StatusBadge status={lv.status} className="ml-2 flex-shrink-0" />
-                  </div>
-                ))
-              ) : (
-                <div className="px-5 py-10 text-center text-sm text-neutral-400">No recent leave requests.</div>
-              )}
-            </div>
+        {/* Right Side: Today's Shift Logs */}
+        <div className="rounded-2xl border border-slate-205 bg-white p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <h3 className="text-sm font-bold text-slate-850 tracking-wider uppercase">
+              Today's Shift Activity
+            </h3>
+            <Link to="/admin/attendance" className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline">
+              View Log
+            </Link>
           </div>
 
-          {/* Recent employees */}
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
-              <h3 className="text-sm font-semibold text-neutral-800">Employee Directory</h3>
-              <button
-                onClick={() => navigate('/admin/employees')}
-                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 transition-colors"
-              >
-                View all <ChevronRight className="w-3 h-3" />
-              </button>
+          {attLoading ? (
+            <div className="py-10 text-center text-xs text-slate-400">Loading today's shift log...</div>
+          ) : attError ? (
+            <div className="py-10 text-center space-y-2">
+              <p className="text-xs text-red-655 font-semibold">{attError}</p>
+              <button onClick={loadAttendance} className="text-xs font-bold text-indigo-650 hover:underline">Try Again</button>
             </div>
-            <div className="divide-y divide-neutral-50">
-              {employees.length > 0 ? (
-                employees.map((emp) => (
-                  <div
-                    key={emp._id}
-                    onClick={() => navigate(`/admin/employees/${emp._id}`)}
-                    className="flex items-center justify-between px-5 py-3.5 hover:bg-neutral-50/60 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar firstName={emp.firstName} lastName={emp.lastName} src={emp.profilePicture} size="sm" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-neutral-800 truncate">{getFullName(emp)}</p>
-                        <p className="text-xs text-neutral-400 truncate">{emp.jobTitle} · {emp.department}</p>
-                      </div>
+          ) : recentAttendance.length > 0 ? (
+            <div className="space-y-4">
+              {recentAttendance.map((att) => {
+                const statusUpper = (att.status || '').toUpperCase();
+                return (
+                  <div key={att._id} className="flex items-start space-x-3 text-xs leading-tight">
+                    <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600 shrink-0">
+                      <Clock size={16} />
                     </div>
-                    <StatusBadge status={emp.employmentStatus} className="ml-2 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                        <p className="font-bold text-slate-800 truncate">
+                          {att.employeeId}
+                        </p>
+                        <StatusBadge status={statusUpper} />
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Check-in: {new Date(att.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}{' '}
+                        {att.checkOut ? `• Out: ${new Date(att.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '• In Office'}
+                      </p>
+                    </div>
                   </div>
-                ))
-              ) : (
-                <div className="px-5 py-10 text-center text-sm text-neutral-400">No employees found.</div>
-              )}
+                );
+              })}
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-10 text-slate-400">
+              <CalendarDays className="mx-auto text-slate-300 mb-2" size={28} />
+              <p className="text-xs font-semibold">No attendance shifts recorded today yet.</p>
+            </div>
+          )}
         </div>
       </div>
-    </AdminLayout>
+    </div>
   );
-}
+};
+
+export default AdminDashboard;

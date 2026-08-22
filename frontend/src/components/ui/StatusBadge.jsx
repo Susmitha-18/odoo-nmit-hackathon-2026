@@ -1,46 +1,56 @@
-/**
- * StatusBadge — renders a colored pill badge for any status value.
- * Covers: attendance, leave, employment status, leave type, job type
- */
-const STATUS_MAP = {
-  // Attendance
-  present:   { label: 'Present',   classes: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' },
-  absent:    { label: 'Absent',    classes: 'bg-red-50 text-red-700 ring-1 ring-red-200' },
-  'half-day':{ label: 'Half Day',  classes: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' },
-  leave:     { label: 'On Leave',  classes: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200' },
+import React from 'react';
 
-  // Leave requests
-  pending:   { label: 'Pending',   classes: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' },
-  approved:  { label: 'Approved',  classes: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' },
-  rejected:  { label: 'Rejected',  classes: 'bg-red-50 text-red-700 ring-1 ring-red-200' },
-
-  // Employment
-  active:    { label: 'Active',    classes: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' },
-  inactive:  { label: 'Inactive',  classes: 'bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200' },
-  terminated:{ label: 'Terminated',classes: 'bg-red-50 text-red-700 ring-1 ring-red-200' },
-
-  // Leave types
-  paid:      { label: 'Paid Leave',   classes: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200' },
-  sick:      { label: 'Sick Leave',   classes: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200' },
-  unpaid:    { label: 'Unpaid Leave', classes: 'bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200' },
-
-  // Job type
-  'full-time': { label: 'Full-Time', classes: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200' },
-  'part-time': { label: 'Part-Time', classes: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200' },
-  contract:    { label: 'Contract',  classes: 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200' },
+const formatStatus = (status) => {
+  if (!status) return '';
+  const str = status.replace(/_/g, ' ').toLowerCase();
+  return str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
 
-export default function StatusBadge({ status, className = '' }) {
-  const config = STATUS_MAP[status] || {
-    label: status,
-    classes: 'bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200',
+const StatusBadge = ({ status }) => {
+  if (!status) return null;
+
+  const normalized = status.trim().toLowerCase();
+  const displayStatus = formatStatus(status);
+
+  let styles = {
+    bg: 'bg-slate-50',
+    text: 'text-slate-700',
+    border: 'border-slate-200',
   };
+
+  if (normalized === 'present' || normalized === 'approved' || normalized === 'completed') {
+    styles = {
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-700',
+      border: 'border-emerald-100',
+    };
+  } else if (normalized === 'absent' || normalized === 'rejected' || normalized === 'cancelled') {
+    styles = {
+      bg: 'bg-rose-50',
+      text: 'text-rose-700',
+      border: 'border-rose-100',
+    };
+  } else if (normalized === 'half-day' || normalized === 'half_day' || normalized === 'pending') {
+    styles = {
+      bg: 'bg-amber-50',
+      text: 'text-amber-700',
+      border: 'border-amber-100',
+    };
+  } else if (normalized === 'leave') {
+    styles = {
+      bg: 'bg-blue-50',
+      text: 'text-blue-700',
+      border: 'border-blue-100',
+    };
+  }
 
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.classes} ${className}`}
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold tracking-wide ${styles.bg} ${styles.text} ${styles.border}`}
     >
-      {config.label}
+      {displayStatus}
     </span>
   );
-}
+};
+
+export default StatusBadge;

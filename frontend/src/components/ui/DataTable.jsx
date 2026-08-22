@@ -1,76 +1,49 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import EmptyState from './EmptyState';
-import LoadingState from './LoadingState';
+import React from 'react';
 
-/**
- * DataTable — responsive table with loading/empty states.
- * Props:
- *   columns: [{ key, label, render?, className? }]
- *   data: array of row objects
- *   loading, error, emptyMessage, emptyIcon
- *   keyExtractor: (row) => string (default: row._id)
- */
-export default function DataTable({
-  columns,
-  data = [],
-  loading = false,
-  error = null,
-  emptyMessage = 'No records found.',
-  emptyIcon,
-  keyExtractor,
-  className = '',
-}) {
-  if (loading) {
-    return <LoadingState message="Loading data..." />;
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-10 text-red-500 text-sm">
-        {error}
-      </div>
-    );
-  }
-
-  if (data.length === 0) {
-    return <EmptyState message={emptyMessage} icon={emptyIcon} />;
-  }
-
-  const getKey = keyExtractor || ((row) => row._id || Math.random());
-
+const DataTable = ({ columns, data = [], loading, emptyMessage = "No records found" }) => {
   return (
-    <div className={`overflow-x-auto rounded-lg border border-neutral-200 ${className}`}>
-      <table className="min-w-full divide-y divide-neutral-200">
-        <thead className="bg-neutral-50">
+    <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+        <thead className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
           <tr>
-            {columns.map((col) => (
-              <th
-                key={col.key}
-                className={`px-4 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap ${col.headerClassName || ''}`}
-              >
-                {col.label}
+            {columns.map((col, idx) => (
+              <th key={idx} className="px-6 py-4">
+                {col.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-neutral-100">
-          {data.map((row, rowIdx) => (
-            <tr
-              key={getKey(row)}
-              className="hover:bg-neutral-50 transition-colors duration-100"
-            >
-              {columns.map((col) => (
-                <td
-                  key={col.key}
-                  className={`px-4 py-3 text-sm text-neutral-700 whitespace-nowrap ${col.className || ''}`}
-                >
-                  {col.render ? col.render(row, rowIdx) : row[col.key]}
-                </td>
-              ))}
+        <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
+          {loading ? (
+            <tr>
+              <td colSpan={columns.length} className="px-6 py-12 text-center">
+                <div className="flex flex-col items-center justify-center space-y-2">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-650"></div>
+                  <span className="text-slate-400 font-medium text-xs">Fetching records...</span>
+                </div>
+              </td>
             </tr>
-          ))}
+          ) : data.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length} className="px-6 py-12 text-center text-slate-400 font-medium">
+                {emptyMessage}
+              </td>
+            </tr>
+          ) : (
+            data.map((row, rowIdx) => (
+              <tr key={rowIdx} className="hover:bg-slate-50/70 transition-colors">
+                {columns.map((col, colIdx) => (
+                  <td key={colIdx} className="px-6 py-4 whitespace-nowrap">
+                    {col.render ? col.render(row, rowIdx) : (row[col.accessor] ?? '—')}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
   );
-}
+};
+
+export default DataTable;

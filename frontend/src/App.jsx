@@ -1,30 +1,16 @@
-import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from './context/AuthContext';
+import React from 'react';
 import AppRouter from './routes/AppRouter';
+import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 
-export default function App() {
+function App() {
   return (
-    <AuthProvider>
-      <AppRouter />
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            fontSize: '14px',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            borderRadius: '10px',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-          },
-          success: {
-            iconTheme: { primary: '#10b981', secondary: '#fff' },
-          },
-          error: {
-            iconTheme: { primary: '#ef4444', secondary: '#fff' },
-          },
-        }}
-      />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
+    </ToastProvider>
   );
 }
+
+export default App;

@@ -1,189 +1,305 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Briefcase, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
-import { authApi } from '../../api/auth.api';
-import { getErrorMessage } from '../../utils/formatUtils';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { User, Mail, Lock, Phone, Briefcase, Hash } from 'lucide-react';
+import Button from '../../components/ui/Button';
 
-const ROLES = [
-  { value: 'employee', label: 'Employee' },
-  { value: 'admin', label: 'Admin / HR Officer' },
-];
-
-export default function RegisterPage() {
+const RegisterPage = () => {
+  const { register } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ employeeId: '', email: '', password: '', confirmPassword: '', role: 'employee' });
-  const [showPwd, setShowPwd] = useState(false);
+
+  const [employeeId, setEmployeeId] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('EMPLOYEE');
+  const [department, setDepartment] = useState('Engineering');
+  const [designation, setDesignation] = useState('Software Engineer');
+  const [phone, setPhone] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [fieldErrors, setFieldErrors] = useState({});
 
-  const handleChange = (e) => {
-    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
-    setFieldErrors((p) => ({ ...p, [e.target.name]: '' }));
-    if (error) setError('');
-  };
-
-  const validate = () => {
-    const errs = {};
-    if (!form.employeeId.trim()) errs.employeeId = 'Employee ID is required.';
-    if (!form.email.trim()) errs.email = 'Email is required.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Enter a valid email address.';
-    if (!form.password) errs.password = 'Password is required.';
-    else if (form.password.length < 8) errs.password = 'Password must be at least 8 characters.';
-    if (form.password !== form.confirmPassword) errs.confirmPassword = 'Passwords do not match.';
-    setFieldErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
+  const departments = ['Engineering', 'Human Resources', 'Sales', 'Marketing', 'Finance'];
+  const designations = [
+    'Software Engineer',
+    'Senior Engineer',
+    'UI/UX Lead',
+    'Backend Developer',
+    'HR Specialist',
+    'HR Director',
+    'Product Manager',
+    'Sales Lead'
+  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
-    setLoading(true);
     setError('');
+
+    // Validations
+    if (!employeeId.trim()) return setError('Employee ID is required.');
+    if (!firstName.trim() || !lastName.trim()) return setError('First and Last names are required.');
+    if (!email.trim()) return setError('Email address is required.');
+    if (password.length < 6) return setError('Password must be at least 6 characters.');
+
+    setLoading(true);
     try {
-      await authApi.register({ employeeId: form.employeeId.trim(), email: form.email.trim(), password: form.password, role: form.role });
-      setSuccess('Registration successful! Please check your email to verify your account, then sign in.');
+      const res = await register({
+        employeeId: employeeId.toUpperCase(),
+        email,
+        password,
+        role,
+        firstName,
+        lastName,
+        department,
+        designation,
+        phone,
+      });
+
+      if (res.success) {
+        showToast('Registration successful! Welcome to Dayflow.', 'success');
+        if (res.user.role === 'ADMIN') {
+          navigate('/admin/dashboard', { replace: true });
+        } else {
+          navigate('/employee/dashboard', { replace: true });
+        }
+      } else {
+        setError(res.message || 'Registration failed.');
+      }
     } catch (err) {
-      setError(getErrorMessage(err));
+      setError('Connection error. Could not register profile.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (success) {
-    return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md text-center">
-          <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-10">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-100 rounded-full mb-4">
-              <CheckCircle className="w-7 h-7 text-emerald-600" />
-            </div>
-            <h2 className="text-xl font-bold text-neutral-900 mb-2">Check your email</h2>
-            <p className="text-sm text-neutral-500 mb-6">{success}</p>
-            <Link
-              to="/login"
-              className="inline-block px-6 py-2.5 text-sm font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Go to Sign In
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-600 rounded-xl mb-4 shadow-lg shadow-indigo-200">
-            <Briefcase className="w-6 h-6 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-neutral-900">Dayflow HRMS</h1>
-          <p className="text-sm text-neutral-500 mt-1">Create your account</p>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-2xl space-y-8">
+        <div className="text-center space-y-2">
+          {/* Logo */}
+          <img src="/dayflow_logo.jpg" alt="Dayflow Logo" className="mx-auto h-16 w-16 rounded-2xl object-cover shadow-md" />
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+            Create your Dayflow Account
+          </h2>
+          <p className="text-xs text-slate-450 font-medium">
+            Register your employee profile to access the HRMS portal.
+          </p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-8">
-          <h2 className="text-lg font-semibold text-neutral-900 mb-6">Register</h2>
-
-          {error && (
-            <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-5">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <p className="text-sm">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            {/* Employee ID */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Employee ID *</label>
-              <input
-                name="employeeId"
-                value={form.employeeId}
-                onChange={handleChange}
-                placeholder="e.g. EMP001"
-                className={`w-full text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors placeholder-neutral-400 ${fieldErrors.employeeId ? 'border-red-300' : 'border-neutral-200'}`}
-              />
-              {fieldErrors.employeeId && <p className="text-xs text-red-500 mt-1">{fieldErrors.employeeId}</p>}
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Email address *</label>
-              <input
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="you@company.com"
-                className={`w-full text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors placeholder-neutral-400 ${fieldErrors.email ? 'border-red-300' : 'border-neutral-200'}`}
-              />
-              {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
-            </div>
-
-            {/* Role */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Role *</label>
-              <select
-                name="role"
-                value={form.role}
-                onChange={handleChange}
-                className="w-full text-sm border border-neutral-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors bg-white"
-              >
-                {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Password *</label>
-              <div className="relative">
-                <input
-                  name="password"
-                  type={showPwd ? 'text' : 'password'}
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="Min. 8 characters"
-                  className={`w-full text-sm border rounded-lg px-3 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors placeholder-neutral-400 ${fieldErrors.password ? 'border-red-300' : 'border-neutral-200'}`}
-                />
-                <button type="button" onClick={() => setShowPwd((p) => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600">
-                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="rounded-xl bg-rose-50 border border-rose-100 p-3 text-center text-xs font-semibold text-rose-700">
+                {error}
               </div>
-              {fieldErrors.password && <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>}
+            )}
+
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              {/* Employee ID */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                  Employee ID (e.g. EMP004)
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                    <Hash size={16} />
+                  </div>
+                  <input
+                    type="text"
+                    value={employeeId}
+                    onChange={(e) => setEmployeeId(e.target.value)}
+                    placeholder="EMP004"
+                    className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Role */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                  Access Level / Role
+                </label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors"
+                >
+                  <option value="EMPLOYEE">Standard Employee</option>
+                  <option value="ADMIN">HR Administrator / Admin</option>
+                </select>
+              </div>
+
+              {/* First Name */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                  First Name
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                    <User size={16} />
+                  </div>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="John"
+                    className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Last Name */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                  Last Name
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                    <User size={16} />
+                  </div>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Doe"
+                    className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                  Work Email Address
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                    <Mail size={16} />
+                  </div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="john.doe@dayflow.com"
+                    className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                  Secure Password
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                    <Lock size={16} />
+                  </div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Min 6 characters"
+                    className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                  Phone Number
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                    <Phone size={16} />
+                  </div>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+1 555-019-2834"
+                    className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Department */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                  Department
+                </label>
+                <select
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors"
+                >
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Designation */}
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                  Job Title / Designation
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                    <Briefcase size={16} />
+                  </div>
+                  <select
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer transition-colors"
+                  >
+                    {designations.map((desig) => (
+                      <option key={desig} value={desig}>
+                        {desig}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
-            {/* Confirm Password */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1.5">Confirm Password *</label>
-              <input
-                name="confirmPassword"
-                type="password"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                placeholder="Repeat password"
-                className={`w-full text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors placeholder-neutral-400 ${fieldErrors.confirmPassword ? 'border-red-300' : 'border-neutral-200'}`}
-              />
-              {fieldErrors.confirmPassword && <p className="text-xs text-red-500 mt-1">{fieldErrors.confirmPassword}</p>}
-            </div>
-
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-60 transition-colors mt-2 shadow-sm shadow-indigo-200"
+              className="w-full py-3"
             >
-              {loading ? 'Creating account...' : 'Create Account'}
-            </button>
+              {loading ? (
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white"></div>
+              ) : (
+                'Register Account'
+              )}
+            </Button>
           </form>
 
-          <p className="text-center text-sm text-neutral-500 mt-5">
-            Already have an account?{' '}
-            <Link to="/login" className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors">Sign in</Link>
-          </p>
+          <div className="mt-5 text-center">
+            <p className="text-xs text-slate-450 font-medium">
+              Already have an account?{' '}
+              <Link to="/login" className="font-semibold text-indigo-600 hover:underline">
+                Sign in instead
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default RegisterPage;

@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 
-const AdminLayout = () => {
+const EmployeeLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -19,4 +19,4 @@ const AdminLayout = () => {
   );
 };
 
-export default AdminLayout;
+export default EmployeeLayout;

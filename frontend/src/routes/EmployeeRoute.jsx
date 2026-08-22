@@ -2,8 +2,8 @@ import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const AdminRoute = () => {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+const EmployeeRoute = () => {
+  const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -17,7 +17,7 @@ const AdminRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
-  return isAdmin ? <Outlet /> : <Navigate to="/employee/dashboard" replace />;
+  return user?.role === 'EMPLOYEE' ? <Outlet /> : <Navigate to="/admin/dashboard" replace />;
 };
 
-export default AdminRoute;
+export default EmployeeRoute;
