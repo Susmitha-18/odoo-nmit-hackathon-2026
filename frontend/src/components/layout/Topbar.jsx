@@ -35,7 +35,16 @@ export default function Topbar({ onMenuToggle, pageTitle }) {
 
       {/* Actions */}
       <div className="flex items-center gap-2">
-        {/* Notification bell — P2, wired as placeholder */}
+        {/* Quick Switch to Admin View */}
+        <a
+          href="/admin/dashboard"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors"
+          title="Switch to HR / Admin View"
+        >
+          <span>👑 Switch to HR Portal</span>
+        </a>
+
+        {/* Notification bell */}
         <button
           className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
           aria-label="Notifications"
