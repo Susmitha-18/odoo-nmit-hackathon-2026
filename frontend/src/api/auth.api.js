@@ -1,41 +1,38 @@
 import axiosInstance from './axiosInstance';
-import { mockLogin, mockGetMe } from './mock/mockServices';
+import * as mockService from './mock/mockServices';
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 export const authApi = {
+  /**
+   * POST /api/v1/auth/login
+   * Body: { email, password }
+   * Response: { success, token, user: { id, employeeId, email, role, firstName, lastName, department, designation } }
+   */
   login: async (email, password) => {
-    if (USE_MOCK) return mockLogin(email, password);
+    if (USE_MOCK) return mockService.login(email, password);
     const { data } = await axiosInstance.post('/auth/login', { email, password });
-    return data;
+    return data; // { success, token, user }
   },
 
+  /**
+   * POST /api/v1/auth/register
+   * Body: { employeeId, email, password, role, firstName, lastName, department, designation, phone }
+   * Response: { success, token, user }
+   */
   register: async (payload) => {
-    if (USE_MOCK) {
-      await new Promise((r) => setTimeout(r, 800));
-      return { message: 'Registration successful. Please verify your email.' };
-    }
+    if (USE_MOCK) return mockService.register(payload);
     const { data } = await axiosInstance.post('/auth/register', payload);
     return data;
   },
 
-  verifyEmail: async (token) => {
-    if (USE_MOCK) {
-      await new Promise((r) => setTimeout(r, 600));
-      return { message: 'Email verified successfully.' };
-    }
-    const { data } = await axiosInstance.post('/auth/verify-email', { token });
-    return data;
-  },
-
+  /**
+   * GET /api/v1/auth/me
+   * Response: { success, user: { id, employeeId, email, role, profile } }
+   */
   getMe: async () => {
-    if (USE_MOCK) return mockGetMe();
+    if (USE_MOCK) return mockService.getMe();
     const { data } = await axiosInstance.get('/auth/me');
     return data;
-  },
-
-  logout: () => {
-    localStorage.removeItem('dayflow_token');
-    localStorage.removeItem('dayflow_user');
   },
 };

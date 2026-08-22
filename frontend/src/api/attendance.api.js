@@ -1,47 +1,55 @@
 import axiosInstance from './axiosInstance';
-import { mockGetAllAttendance } from './mock/mockServices';
+import * as mockService from './mock/mockServices';
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 export const attendanceApi = {
-  // Admin: all attendance with optional filters
+  /**
+   * GET /api/v1/attendance/all  (Admin only)
+   * Query params: { date, employeeId, status }
+   * Response: { success, count, attendance: [...] }
+   * Each record: { _id, user, employeeId, date, checkIn, checkOut, workHours, status, remarks }
+   * Status values from backend: 'Present' | 'Half-day' | 'Absent' | 'Leave'
+   */
   getAll: async (params = {}) => {
-    if (USE_MOCK) return mockGetAllAttendance(params);
-    const { data } = await axiosInstance.get('/attendance', { params });
+    if (USE_MOCK) return mockService.getAllAttendance(params);
+    const { data } = await axiosInstance.get('/attendance/all', { params });
+    return data.attendance || [];
+  },
+
+  /**
+   * GET /api/v1/attendance/me  (Own records)
+   */
+  getMine: async (params = {}) => {
+    if (USE_MOCK) return mockService.getMyAttendance(params);
+    const { data } = await axiosInstance.get('/attendance/me', { params });
+    return data.attendance || [];
+  },
+
+  /**
+   * GET /api/v1/attendance/status/today
+   */
+  getTodayStatus: async () => {
+    if (USE_MOCK) return mockService.getTodayAttendance();
+    const { data } = await axiosInstance.get('/attendance/status/today');
     return data;
   },
 
-  // Admin: specific employee's attendance
-  getByEmployee: async (userId, params = {}) => {
-    if (USE_MOCK) return mockGetAllAttendance({ userId, ...params });
-    const { data } = await axiosInstance.get(`/attendance/${userId}`, { params });
-    return data;
-  },
-
-  // Employee: check in
+  /**
+   * POST /api/v1/attendance/check-in
+   */
   checkIn: async () => {
-    if (USE_MOCK) {
-      await new Promise((r) => setTimeout(r, 500));
-      return { message: 'Checked in successfully.', time: new Date().toISOString() };
-    }
-    const { data } = await axiosInstance.post('/attendance/checkin');
-    return data;
+    if (USE_MOCK) return mockService.checkIn();
+    const { data } = await axiosInstance.post('/attendance/check-in');
+    return data.attendance;
   },
 
-  // Employee: check out
+  /**
+   * POST /api/v1/attendance/check-out
+   */
   checkOut: async () => {
-    if (USE_MOCK) {
-      await new Promise((r) => setTimeout(r, 500));
-      return { message: 'Checked out successfully.', time: new Date().toISOString() };
-    }
-    const { data } = await axiosInstance.post('/attendance/checkout');
-    return data;
-  },
-
-  // Employee: own attendance
-  getMy: async (params = {}) => {
-    if (USE_MOCK) return mockGetAllAttendance({ userId: 'emp-001', ...params });
-    const { data } = await axiosInstance.get('/attendance/my', { params });
-    return data;
+    if (USE_MOCK) return mockService.checkOut();
+    const { data } = await axiosInstance.post('/attendance/check-out');
+    return data.attendance;
   },
 };

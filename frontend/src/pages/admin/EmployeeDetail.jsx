@@ -89,12 +89,8 @@ export default function EmployeeDetail() {
         phone: data.phone,
         address: data.address,
         department: data.department,
-        jobTitle: data.jobTitle,
-        jobType: data.jobType,
-        employmentStatus: data.employmentStatus,
-        dateOfBirth: data.dateOfBirth,
-        gender: data.gender,
-        joinDate: data.joinDate,
+        designation: data.designation,
+        joiningDate: data.joiningDate ? data.joiningDate.split('T')[0] : '',
       });
     } catch (err) {
       setError(getErrorMessage(err));
@@ -113,7 +109,15 @@ export default function EmployeeDetail() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const updated = await employeeApi.update(id, form);
+      const updated = await employeeApi.update(id, {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        department: form.department,
+        designation: form.designation,
+        phone: form.phone,
+        address: form.address,
+        joiningDate: form.joiningDate,
+      });
       setEmployee((prev) => ({ ...prev, ...updated }));
       toast.success('Employee details updated successfully.');
       setSearchParams({});
@@ -128,9 +132,8 @@ export default function EmployeeDetail() {
     setForm({
       firstName: employee.firstName, lastName: employee.lastName,
       phone: employee.phone, address: employee.address,
-      department: employee.department, jobTitle: employee.jobTitle,
-      jobType: employee.jobType, employmentStatus: employee.employmentStatus,
-      dateOfBirth: employee.dateOfBirth, gender: employee.gender, joinDate: employee.joinDate,
+      department: employee.department, designation: employee.designation,
+      joiningDate: employee.joiningDate ? employee.joiningDate.split('T')[0] : '',
     });
     setSearchParams({});
   };
@@ -207,10 +210,10 @@ export default function EmployeeDetail() {
             <h2 className="text-lg font-bold text-neutral-900">{getFullName(employee)}</h2>
             <StatusBadge status={employee.employmentStatus} />
           </div>
-          <p className="text-sm text-neutral-500 mt-0.5">{employee.jobTitle} · {employee.department}</p>
+          <p className="text-sm text-neutral-500 mt-0.5">{employee.designation} · {employee.department}</p>
           <div className="flex items-center gap-4 mt-2">
             <span className="font-mono text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{employee.employeeId}</span>
-            <span className="text-xs text-neutral-400">{employee.email}</span>
+            <span className="text-xs text-neutral-400">{employee.user?.email}</span>
           </div>
         </div>
       </div>
@@ -227,22 +230,15 @@ export default function EmployeeDetail() {
               </div>
               <EditField label="Phone" name="phone" value={form.phone} onChange={handleChange} />
               <EditField label="Address" name="address" value={form.address} onChange={handleChange} />
-              <div className="grid grid-cols-2 gap-3">
-                <EditField label="Date of Birth" name="dateOfBirth" type="date" value={form.dateOfBirth} onChange={handleChange} />
-                <EditField
-                  label="Gender" name="gender" value={form.gender} onChange={handleChange}
-                  options={[{ value: '', label: 'Select' }, { value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }, { value: 'other', label: 'Other' }]}
-                />
-              </div>
+              <EditField label="Join Date" name="joiningDate" type="date" value={form.joiningDate} onChange={handleChange} />
             </div>
           ) : (
             <>
               <InfoRow label="Full Name" value={getFullName(employee)} />
               <InfoRow label="Phone" value={employee.phone} />
               <InfoRow label="Address" value={employee.address} />
-              <InfoRow label="Date of Birth" value={formatDate(employee.dateOfBirth)} />
-              <InfoRow label="Gender" value={employee.gender ? employee.gender.charAt(0).toUpperCase() + employee.gender.slice(1) : '—'} />
-              <InfoRow label="Email" value={employee.email} />
+              <InfoRow label="Join Date" value={formatDate(employee.joiningDate)} />
+              <InfoRow label="Email" value={employee.user?.email} />
             </>
           )}
         </SectionCard>
@@ -251,30 +247,18 @@ export default function EmployeeDetail() {
         <SectionCard title="Job Details" icon={Briefcase}>
           {isEditMode ? (
             <div className="space-y-3">
-              <EditField label="Job Title" name="jobTitle" value={form.jobTitle} onChange={handleChange} />
+              <EditField label="Designation" name="designation" value={form.designation} onChange={handleChange} />
               <EditField
                 label="Department" name="department" value={form.department} onChange={handleChange}
                 options={[{ value: '', label: 'Select department' }, ...DEPARTMENTS.map((d) => ({ value: d, label: d }))]}
               />
-              <div className="grid grid-cols-2 gap-3">
-                <EditField
-                  label="Job Type" name="jobType" value={form.jobType} onChange={handleChange}
-                  options={JOB_TYPES.map((t) => ({ value: t, label: formatJobType(t) }))}
-                />
-                <EditField
-                  label="Status" name="employmentStatus" value={form.employmentStatus} onChange={handleChange}
-                  options={EMP_STATUSES.map((s) => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))}
-                />
-              </div>
-              <EditField label="Join Date" name="joinDate" type="date" value={form.joinDate} onChange={handleChange} />
+              <EditField label="Join Date" name="joiningDate" type="date" value={form.joiningDate} onChange={handleChange} />
             </div>
           ) : (
             <>
-              <InfoRow label="Job Title" value={employee.jobTitle} />
+              <InfoRow label="Designation" value={employee.designation} />
               <InfoRow label="Department" value={employee.department} />
-              <InfoRow label="Job Type" value={formatJobType(employee.jobType)} />
-              <InfoRow label="Status" value={<StatusBadge status={employee.employmentStatus} />} />
-              <InfoRow label="Join Date" value={formatDate(employee.joinDate)} />
+              <InfoRow label="Join Date" value={formatDate(employee.joiningDate)} />
               <InfoRow label="Employee ID" value={employee.employeeId} />
             </>
           )}

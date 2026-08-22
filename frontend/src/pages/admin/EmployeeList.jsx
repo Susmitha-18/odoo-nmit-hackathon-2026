@@ -75,10 +75,10 @@ export default function EmployeeList() {
       label: 'Name',
       render: (row) => (
         <div className="flex items-center gap-2.5">
-          <Avatar firstName={row.firstName} lastName={row.lastName} src={row.profilePicture} size="sm" />
+          <Avatar firstName={row.firstName} lastName={row.lastName} src={row.avatarUrl} size="sm" />
           <div>
             <p className="text-sm font-medium text-neutral-800">{getFullName(row)}</p>
-            <p className="text-xs text-neutral-400">{row.email}</p>
+            <p className="text-xs text-neutral-400">{row.user?.email || ''}</p>
           </div>
         </div>
       ),
@@ -91,19 +91,19 @@ export default function EmployeeList() {
       ),
     },
     {
-      key: 'jobTitle',
+      key: 'designation',
       label: 'Designation',
       render: (row) => (
         <div>
-          <p className="text-sm text-neutral-700">{row.jobTitle || '—'}</p>
-          <p className="text-xs text-neutral-400">{formatJobType(row.jobType)}</p>
+          <p className="text-sm text-neutral-700">{row.designation || '—'}</p>
+          <p className="text-xs text-neutral-400">{row.department}</p>
         </div>
       ),
     },
     {
-      key: 'employmentStatus',
+      key: 'status',
       label: 'Status',
-      render: (row) => <StatusBadge status={row.employmentStatus} />,
+      render: (row) => <StatusBadge status={row.user?.isVerified ? 'active' : 'inactive'} />,
     },
     {
       key: 'actions',
@@ -124,7 +124,7 @@ export default function EmployeeList() {
           </button>
         </div>
       ),
-    },
+    }
   ];
 
   return (

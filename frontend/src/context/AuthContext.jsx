@@ -3,6 +3,21 @@ import { authApi } from '../api/auth.api';
 
 const AuthContext = createContext(null);
 
+/**
+ * Normalize user object from backend.
+ * Backend returns role as 'ADMIN' or 'EMPLOYEE' (uppercase).
+ * We normalize to lowercase for consistent UI checks.
+ */
+function normalizeUser(user) {
+  if (!user) return null;
+  return {
+    ...user,
+    role: user.role?.toLowerCase() || 'employee',
+    // Map backend 'designation' to 'jobTitle' for UI compatibility
+    jobTitle: user.jobTitle || user.designation || '',
+  };
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -15,7 +30,7 @@ export function AuthProvider({ children }) {
     if (storedToken && storedUser) {
       try {
         setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        setUser(JSON.parse(storedUser)); // already normalized when stored
       } catch {
         localStorage.removeItem('dayflow_token');
         localStorage.removeItem('dayflow_user');
@@ -26,16 +41,18 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     const result = await authApi.login(email, password);
-    const { token: newToken, user: newUser } = result;
+    const { token: newToken, user: rawUser } = result;
+    const normalized = normalizeUser(rawUser);
     localStorage.setItem('dayflow_token', newToken);
-    localStorage.setItem('dayflow_user', JSON.stringify(newUser));
+    localStorage.setItem('dayflow_user', JSON.stringify(normalized));
     setToken(newToken);
-    setUser(newUser);
-    return newUser;
+    setUser(normalized);
+    return normalized;
   }, []);
 
   const logout = useCallback(() => {
-    authApi.logout();
+    localStorage.removeItem('dayflow_token');
+    localStorage.removeItem('dayflow_user');
     setToken(null);
     setUser(null);
   }, []);
@@ -45,6 +62,7 @@ export function AuthProvider({ children }) {
     token,
     loading,
     isAuthenticated: !!token && !!user,
+    // Backend sends 'ADMIN' — normalized to lowercase 'admin'
     isAdmin: user?.role === 'admin',
     isEmployee: user?.role === 'employee',
     login,

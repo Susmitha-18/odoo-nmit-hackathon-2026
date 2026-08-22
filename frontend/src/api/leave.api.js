@@ -1,44 +1,73 @@
 import axiosInstance from './axiosInstance';
-import { mockGetAllLeaves, mockApproveLeave, mockRejectLeave } from './mock/mockServices';
+import * as mockService from './mock/mockServices';
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 export const leaveApi = {
-  // Admin: all leave requests
+  /**
+   * GET /api/v1/leaves/all?status=Pending|Approved|Rejected  (Admin only)
+   * Response: { success, count, leaves: [...] }
+   * Backend status values: 'Pending' | 'Approved' | 'Rejected'
+   */
   getAll: async (params = {}) => {
-    if (USE_MOCK) return mockGetAllLeaves(params);
-    const { data } = await axiosInstance.get('/leaves', { params });
-    return data;
-  },
-
-  // Employee: own leave requests
-  getMy: async () => {
-    if (USE_MOCK) return mockGetAllLeaves({ userId: 'emp-001' });
-    const { data } = await axiosInstance.get('/leaves/my');
-    return data;
-  },
-
-  // Employee: apply for leave
-  apply: async (payload) => {
-    if (USE_MOCK) {
-      await new Promise((r) => setTimeout(r, 600));
-      return { message: 'Leave request submitted.', status: 'pending' };
+    if (USE_MOCK) return mockService.getAllLeaves(params);
+    // Map lowercase status values to backend's capitalized values
+    const queryParams = {};
+    if (params.status) {
+      queryParams.status = params.status.charAt(0).toUpperCase() + params.status.slice(1).toLowerCase();
     }
-    const { data } = await axiosInstance.post('/leaves', payload);
-    return data;
+    const { data } = await axiosInstance.get('/leaves/all', { params: queryParams });
+    return data.leaves || [];
   },
 
-  // Admin: approve
-  approve: async (id, comment = '') => {
-    if (USE_MOCK) return mockApproveLeave(id, comment);
-    const { data } = await axiosInstance.patch(`/leaves/${id}/approve`, { comment });
-    return data;
+  /**
+   * GET /api/v1/leaves/me  (Own leaves — Employee)
+   */
+  getMine: async () => {
+    if (USE_MOCK) return mockService.getMyLeaves();
+    const { data } = await axiosInstance.get('/leaves/me');
+    return data.leaves || [];
   },
 
-  // Admin: reject (comment required)
-  reject: async (id, comment) => {
-    if (USE_MOCK) return mockRejectLeave(id, comment);
-    const { data } = await axiosInstance.patch(`/leaves/${id}/reject`, { comment });
-    return data;
+  /**
+   * POST /api/v1/leaves
+   * Body: { leaveType, startDate, endDate, reason }
+   * Note: backend field is 'reason' (not 'remarks')
+   */
+  apply: async (payload) => {
+    if (USE_MOCK) return mockService.applyLeave(payload);
+    const { data } = await axiosInstance.post('/leaves', {
+      leaveType: payload.leaveType,
+      startDate: payload.startDate,
+      endDate: payload.endDate,
+      reason: payload.reason || payload.remarks, // normalize field name
+    });
+    return data.leave;
+  },
+
+  /**
+   * PATCH /api/v1/leaves/:id/decision
+   * Body: { status: 'Approved', adminComment }
+   */
+  approve: async (id, adminComment = '') => {
+    if (USE_MOCK) return mockService.approveLeave(id);
+    const { data } = await axiosInstance.patch(`/leaves/${id}/decision`, {
+      status: 'Approved',
+      adminComment: adminComment || 'Leave approved by HR',
+    });
+    return data.leave;
+  },
+
+  /**
+   * PATCH /api/v1/leaves/:id/decision
+   * Body: { status: 'Rejected', adminComment }
+   */
+  reject: async (id, adminComment) => {
+    if (USE_MOCK) return mockService.rejectLeave(id, adminComment);
+    const { data } = await axiosInstance.patch(`/leaves/${id}/decision`, {
+      status: 'Rejected',
+      adminComment,
+    });
+    return data.leave;
   },
 };

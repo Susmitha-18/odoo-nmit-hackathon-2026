@@ -14,13 +14,13 @@ import { formatDate, timeAgo } from '../../utils/dateUtils';
 import { formatLeaveType, getErrorMessage, truncate } from '../../utils/formatUtils';
 
 const TABS = [
-  { key: 'pending',  label: 'Pending',  icon: Clock },
-  { key: 'approved', label: 'Approved', icon: CheckCircle },
-  { key: 'rejected', label: 'Rejected', icon: XCircle },
+  { key: 'Pending',  label: 'Pending',  icon: Clock },
+  { key: 'Approved', label: 'Approved', icon: CheckCircle },
+  { key: 'Rejected', label: 'Rejected', icon: XCircle },
 ];
 
 export default function LeaveManagement() {
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState('Pending');
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -82,6 +82,12 @@ export default function LeaveManagement() {
     return `${days} day${days !== 1 ? 's' : ''}`;
   };
 
+  // Get display name from leave record
+  const getEmployeeName = (row) => {
+    if (row.applicant?.email) return row.applicant.email.split('@')[0];
+    return row.employeeId || 'Employee';
+  };
+
   // Table columns per tab
   const baseColumns = [
     {
@@ -89,10 +95,10 @@ export default function LeaveManagement() {
       label: 'Employee',
       render: (row) => (
         <div className="flex items-center gap-2.5">
-          <Avatar firstName={row.employeeName?.split(' ')[0]} lastName={row.employeeName?.split(' ')[1]} size="sm" />
+          <Avatar firstName={row.employeeId} lastName="" size="sm" />
           <div>
-            <p className="text-sm font-medium text-neutral-800">{row.employeeName}</p>
-            <p className="text-xs text-neutral-400">{row.department}</p>
+            <p className="text-sm font-medium text-neutral-800">{getEmployeeName(row)}</p>
+            <p className="text-xs text-neutral-400">{row.employeeId}</p>
           </div>
         </div>
       ),
@@ -114,10 +120,10 @@ export default function LeaveManagement() {
     },
     {
       key: 'remarks',
-      label: 'Remarks',
+      label: 'Reason',
       render: (row) => (
         <span className="text-xs text-neutral-500 italic">
-          {row.remarks ? `"${truncate(row.remarks, 50)}"` : '—'}
+          {row.reason ? `"${truncate(row.reason, 50)}"` : '—'}
         </span>
       ),
     },
@@ -141,13 +147,19 @@ export default function LeaveManagement() {
     render: (row) => (
       <div className="flex items-center gap-2">
         <button
-          onClick={() => setApproveModal({ open: true, leave: row })}
+          onClick={() => setApproveModal({ open: true, leave: {
+            ...row,
+            employeeName: getEmployeeName(row),
+          }})}
           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50 transition-colors"
         >
           <CheckCircle className="w-3.5 h-3.5" /> Approve
         </button>
         <button
-          onClick={() => setRejectModal({ open: true, leave: row })}
+          onClick={() => setRejectModal({ open: true, leave: {
+            ...row,
+            employeeName: getEmployeeName(row),
+          }})}
           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
         >
           <XCircle className="w-3.5 h-3.5" /> Reject
@@ -167,7 +179,7 @@ export default function LeaveManagement() {
   };
 
   const columns =
-    activeTab === 'pending'
+    activeTab === 'Pending'
       ? [...baseColumns, pendingActions]
       : [...baseColumns, reviewedColumn];
 
@@ -219,9 +231,9 @@ export default function LeaveManagement() {
             data={leaves}
             loading={loading}
             emptyMessage={
-              activeTab === 'pending'
+              activeTab === 'Pending'
                 ? 'No pending leave requests. All caught up!'
-                : activeTab === 'approved'
+                : activeTab === 'Approved'
                 ? 'No approved leave requests.'
                 : 'No rejected leave requests.'
             }
