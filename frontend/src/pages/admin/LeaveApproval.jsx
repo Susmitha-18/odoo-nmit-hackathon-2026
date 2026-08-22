@@ -59,10 +59,10 @@ export default function LeaveApproval() {
 
   const filteredLeaves = leaves.filter(l => {
     if (statusFilter === 'ALL') return true;
-    return l.status === statusFilter;
+    return l.status?.toUpperCase() === statusFilter.toUpperCase();
   });
 
-  const pendingCount = leaves.filter(l => l.status === 'pending').length;
+  const pendingCount = leaves.filter(l => l.status?.toUpperCase() === 'PENDING').length;
 
   return (
     <div className="space-y-6 max-w-7xl">

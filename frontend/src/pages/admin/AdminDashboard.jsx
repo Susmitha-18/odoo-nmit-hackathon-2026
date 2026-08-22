@@ -30,9 +30,9 @@ export default function AdminDashboard() {
 
   if (isLoading) return <LoadingState message="Loading HR Dashboard..." />;
 
-  const pendingLeaves = leaves.filter(l => l.status === 'pending');
+  const pendingLeaves = leaves.filter(l => l.status?.toUpperCase() === 'PENDING');
   const activeEmployees = employees.filter(e => e.isActive);
-  const todayPresent = attendance.filter(a => a.status === 'present').length;
+  const todayPresent = attendance.filter(a => a.status?.toUpperCase() === 'PRESENT').length;
   const totalPayroll = salaries.reduce((acc, curr) => acc + (curr.netSalary || 0), 0);
 
   return (

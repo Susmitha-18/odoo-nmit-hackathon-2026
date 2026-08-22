@@ -63,9 +63,9 @@ export default function Leave() {
 
   const openModal = () => { setFormData(INITIAL_FORM); setFormErrors({}); setShowModal(true); };
 
-  const pending  = leaves.filter((l) => l.status === 'pending').length;
-  const approved = leaves.filter((l) => l.status === 'approved').length;
-  const rejected = leaves.filter((l) => l.status === 'rejected').length;
+  const pending  = leaves.filter((l) => l.status?.toUpperCase() === 'PENDING').length;
+  const approved = leaves.filter((l) => l.status?.toUpperCase() === 'APPROVED').length;
+  const rejected = leaves.filter((l) => l.status?.toUpperCase() === 'REJECTED').length;
 
   if (isLoading) return <LoadingState message="Loading leave requests…" />;
 

@@ -52,8 +52,8 @@ export default function Dashboard() {
     setCheckingOut(false);
   };
 
-  const pendingLeaves  = leaves.filter((l) => l.status === 'pending').length;
-  const approvedLeaves = leaves.filter((l) => l.status === 'approved').length;
+  const pendingLeaves  = leaves.filter((l) => l.status?.toUpperCase() === 'PENDING').length;
+  const approvedLeaves = leaves.filter((l) => l.status?.toUpperCase() === 'APPROVED').length;
   const recentLeaves   = [...leaves]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 3);

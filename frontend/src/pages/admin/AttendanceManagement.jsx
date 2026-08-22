@@ -37,13 +37,13 @@ export default function AttendanceManagement() {
   const filtered = attendance.filter(item => {
     const name = getEmployeeName(item.employeeId).toLowerCase();
     const matchesSearch = name.includes(searchTerm.toLowerCase()) || (item.date && item.date.includes(searchTerm));
-    const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
+    const matchesStatus = statusFilter === 'ALL' || item.status?.toUpperCase() === statusFilter.toUpperCase();
     return matchesSearch && matchesStatus;
   });
 
-  const presentCount = attendance.filter(a => a.status === 'present').length;
-  const absentCount = attendance.filter(a => a.status === 'absent').length;
-  const leaveCount = attendance.filter(a => a.status === 'leave').length;
+  const presentCount = attendance.filter(a => a.status?.toUpperCase() === 'PRESENT').length;
+  const absentCount = attendance.filter(a => a.status?.toUpperCase() === 'ABSENT').length;
+  const leaveCount = attendance.filter(a => a.status?.toUpperCase() === 'LEAVE').length;
 
   return (
     <div className="space-y-6 max-w-7xl">
