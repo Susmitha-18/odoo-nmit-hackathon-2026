@@ -1,75 +1,56 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 
-/**
- * Modal — accessible dialog wrapper.
- *
- * Props:
- *   isOpen    bool
- *   onClose   func
- *   title     string
- *   children  node
- *   size      "sm" | "md" | "lg"  (default "md")
- */
-export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
-  const dialogRef = useRef(null);
-
+const Modal = ({ isOpen, onClose, title, children, footer }) => {
   // Close on Escape key
   useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose(); };
-    if (isOpen) document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      // Prevent body scrolling
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen, onClose]);
-
-  // Lock body scroll
-  useEffect(() => {
-    document.body.style.overflow = isOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const sizeClass = {
-    sm: 'max-w-sm',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-  }[size] ?? 'max-w-lg';
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      aria-modal="true"
-      role="dialog"
-    >
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Dialog */}
-      <div
-        ref={dialogRef}
-        className={`relative w-full ${sizeClass} bg-white rounded-2xl shadow-xl flex flex-col max-h-[90vh]`}
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-900/50 backdrop-blur-sm p-4 md:p-0">
+      <div 
+        className="relative w-full max-w-lg transform rounded-xl bg-white shadow-2xl transition-all"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-            aria-label="Close dialog"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
           >
-            <X size={18} />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="px-6 py-4">
           {children}
         </div>
+
+        {/* Footer */}
+        {footer && (
+          <div className="flex items-center justify-end space-x-3 border-t border-slate-200 bg-slate-50 px-6 py-4 rounded-b-xl">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
-}
+};
+
+export default Modal;

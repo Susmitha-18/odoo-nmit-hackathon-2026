@@ -1,49 +1,56 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
-/**
- * KpiCard — a clean metric card used on the dashboard.
- *
- * Props:
- *   title     string  — metric label
- *   value     string  — primary display value
- *   subtitle  string  — secondary label (optional)
- *   icon      node    — lucide icon element
- *   trend     "up" | "down" | "neutral" (optional)
- *   color     "blue" | "green" | "yellow" | "red" (optional, default "blue")
- */
-export default function KpiCard({ title, value, subtitle, icon, trend, color = 'blue' }) {
+const KpiCard = ({ title, value, icon: Icon, color = 'indigo', subtitle }) => {
   const colorMap = {
-    blue:   { bg: 'bg-primary-50',  icon: 'text-primary-600',  text: 'text-primary-700' },
-    green:  { bg: 'bg-success-50',  icon: 'text-success-600',  text: 'text-success-700' },
-    yellow: { bg: 'bg-warning-50',  icon: 'text-warning-600',  text: 'text-warning-700' },
-    red:    { bg: 'bg-danger-50',   icon: 'text-danger-600',   text: 'text-danger-700'  },
+    indigo: {
+      bg: 'bg-indigo-50',
+      text: 'text-indigo-600',
+      border: 'border-indigo-100',
+    },
+    emerald: {
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-600',
+      border: 'border-emerald-100',
+    },
+    amber: {
+      bg: 'bg-amber-50',
+      text: 'text-amber-600',
+      border: 'border-amber-100',
+    },
+    rose: {
+      bg: 'bg-rose-50',
+      text: 'text-rose-600',
+      border: 'border-rose-100',
+    },
+    blue: {
+      bg: 'bg-blue-50',
+      text: 'text-blue-600',
+      border: 'border-blue-100',
+    },
   };
-  const c = colorMap[color] ?? colorMap.blue;
 
-  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-  const trendColor = trend === 'up' ? 'text-success-600' : trend === 'down' ? 'text-danger-600' : 'text-gray-400';
+  const selectedColors = colorMap[color] || colorMap.indigo;
 
   return (
-    <div className="card flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-500">{title}</span>
-        {icon && (
-          <span className={`p-2 rounded-lg ${c.bg} ${c.icon}`}>
-            {icon}
-          </span>
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300 flex items-center justify-between">
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-slate-500 tracking-wide uppercase">
+          {title}
+        </p>
+        <p className="text-3xl font-bold text-slate-800 tracking-tight">
+          {value}
+        </p>
+        {subtitle && (
+          <p className="text-xs text-slate-400 font-medium">
+            {subtitle}
+          </p>
         )}
       </div>
-      <div>
-        <p className="text-2xl font-bold text-gray-900">{value ?? '—'}</p>
-        {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+      <div className={`rounded-xl p-3.5 ${selectedColors.bg} ${selectedColors.text}`}>
+        <Icon size={24} strokeWidth={2} />
       </div>
-      {trend && (
-        <div className={`flex items-center gap-1 text-xs font-medium ${trendColor}`}>
-          <TrendIcon size={13} />
-          <span>{trend === 'up' ? 'Increased' : trend === 'down' ? 'Decreased' : 'No change'}</span>
-        </div>
-      )}
     </div>
   );
-}
+};
+
+export default KpiCard;

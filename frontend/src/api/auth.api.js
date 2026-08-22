@@ -1,26 +1,16 @@
-import api from './axios';
+import axiosInstance from './axiosInstance';
 
-export const authApi = {
-  /**
-   * Register a new user.
-   * @param {{ employeeId, email, password, role }} data
-   */
-  register: (data) => api.post('/auth/register', data),
+export const loginAPI = async (email, password) => {
+  const response = await axiosInstance.post('/auth/login', { email, password });
+  return response.data;
+};
 
-  /**
-   * Login with email + password.
-   * @param {{ email, password }} data
-   * @returns {{ token, user: { _id, email, role, employeeId } }}
-   */
-  login: (data) => api.post('/auth/login', data),
+export const registerAPI = async (payload) => {
+  const response = await axiosInstance.post('/auth/register', payload);
+  return response.data;
+};
 
-  /**
-   * Get the currently authenticated user's info.
-   */
-  me: () => api.get('/auth/me'),
-
-  /**
-   * Logout (clears server session if applicable).
-   */
-  logout: () => api.post('/auth/logout'),
+export const getMeAPI = async () => {
+  const response = await axiosInstance.get('/auth/me');
+  return response.data;
 };

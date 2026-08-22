@@ -1,33 +1,39 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 15000,
+const baseURL = import.meta.env.VITE_API_URL || '/api';
+
+const axiosInstance = axios.create({
+  baseURL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Attach JWT token to every request
-api.interceptors.request.use(
+// Request Interceptor: Attach JWT Token from localStorage
+axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('dayflow_token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-// Handle 401 globally — token expired/invalid
-api.interceptors.response.use(
+// Response Interceptor: Global Error Handling
+axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // If unauthorized, clean up token and we can let the context handler handle redirecting
+    if (error.response && error.response.status === 401) {
       localStorage.removeItem('dayflow_token');
       localStorage.removeItem('dayflow_user');
-      // Redirect to login — safe even without router context
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      // If we are not on login page, we can redirect
+      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+        window.location.href = '/login?expired=true';
       }
     }
     return Promise.reject(error);

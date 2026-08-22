@@ -1,16 +1,12 @@
-import { Loader2 } from 'lucide-react';
+import React from 'react';
 
-export default function LoadingState({ fullScreen = false, message = 'Loading...' }) {
-  const wrapper = fullScreen
-    ? 'fixed inset-0 bg-white flex items-center justify-center z-50'
-    : 'flex items-center justify-center py-16';
-
+const LoadingState = ({ message = "Loading content..." }) => {
   return (
-    <div className={wrapper}>
-      <div className="flex flex-col items-center gap-3">
-        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-        <p className="text-sm text-neutral-500 font-medium">{message}</p>
-      </div>
+    <div className="flex min-h-[350px] w-full flex-col items-center justify-center space-y-4 rounded-2xl border border-dashed border-slate-200 bg-white/50 p-8 text-center">
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-150 border-t-indigo-600 shadow-sm"></div>
+      <p className="text-sm font-semibold text-slate-500 tracking-wide">{message}</p>
     </div>
   );
-}
+};
+
+export default LoadingState;

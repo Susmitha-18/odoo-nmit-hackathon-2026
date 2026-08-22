@@ -1,8 +1,16 @@
-import api from './axios';
+import axiosInstance from './axiosInstance';
 
-export const payrollApi = {
-  /**
-   * Get the currently authenticated employee's own payroll (read-only).
-   */
-  getMyPayroll: () => api.get('/payroll/me'),
+export const getMyPayrollAPI = async () => {
+  const response = await axiosInstance.get('/payroll/me');
+  return response.data;
+};
+
+export const getAllPayrollsAPI = async () => {
+  const response = await axiosInstance.get('/payroll');
+  return response.data;
+};
+
+export const updateEmployeePayrollAPI = async (employeeId, data) => {
+  const response = await axiosInstance.put(`/payroll/${employeeId}`, data);
+  return response.data;
 };

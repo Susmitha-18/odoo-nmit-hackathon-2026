@@ -1,86 +1,141 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../api/axios';
+import { loginAPI, registerAPI, getMeAPI } from '../api/auth.api';
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('dayflow_user');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [token, setToken] = useState(() => localStorage.getItem('dayflow_token') || '');
-  const [isLoading, setIsLoading] = useState(true);
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('dayflow_token') || null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const verifySession = async () => {
-      if (token) {
+    const initializeUser = async () => {
+      const storedToken = localStorage.getItem('dayflow_token');
+      if (storedToken) {
         try {
-          const res = await api.get('/auth/me');
-          if (res.data?.success) {
-            setUser(res.data.user);
-            localStorage.setItem('dayflow_user', JSON.stringify(res.data.user));
+          const data = await getMeAPI();
+          if (data.success && data.user) {
+            // Build full user profile
+            const employee = data.user.employee || {};
+            setUser({
+              id: data.user.id,
+              employeeId: data.user.employeeId,
+              email: data.user.email,
+              role: data.user.role,
+              fullName: employee.fullName || '',
+              department: employee.department || '',
+              designation: employee.designation || '',
+              profilePicture: employee.profilePicture || '',
+              address: employee.address || '',
+              phone: employee.phone || '',
+              joiningDate: employee.joiningDate || '',
+            });
+          } else {
+            logout();
           }
-        } catch (err) {
-          console.warn('Session verification failed, falling back to cached user:', err);
+        } catch (error) {
+          console.error("Session verification failed", error);
+          logout();
         }
       }
-      setIsLoading(false);
+      setLoading(false);
     };
-    verifySession();
+
+    initializeUser();
   }, [token]);
 
   const login = async (email, password) => {
+    setLoading(true);
     try {
-      const res = await api.post('/auth/login', { email, password });
-      if (res.data?.success) {
-        const { token: newToken, user: userData } = res.data;
-        setToken(newToken);
-        setUser(userData);
-        localStorage.setItem('dayflow_token', newToken);
-        localStorage.setItem('dayflow_user', JSON.stringify(userData));
-        return userData;
+      const data = await loginAPI(email, password);
+      if (data.success && data.token) {
+        localStorage.setItem('dayflow_token', data.token);
+        localStorage.setItem('dayflow_user', JSON.stringify(data.user));
+        setToken(data.token);
+        setUser(data.user);
+        return { success: true, user: data.user };
+      } else {
+        return { success: false, message: data.message || 'Login failed' };
       }
     } catch (error) {
-      // Fallback for offline demo login
-      let role = email.toLowerCase().includes('admin') ? 'ADMIN' : 'EMPLOYEE';
-      const mockUserData = {
-        id: 'user_fallback',
-        employeeId: role === 'ADMIN' ? 'EMP001' : 'EMP002',
-        email,
-        role,
-        fullName: role === 'ADMIN' ? 'Sarah Jenkins' : 'John Doe'
-      };
-      setToken('mock_demo_token');
-      setUser(mockUserData);
-      localStorage.setItem('dayflow_token', 'mock_demo_token');
-      localStorage.setItem('dayflow_user', JSON.stringify(mockUserData));
-      return mockUserData;
+      const errMsg = error.response?.data?.message || 'Invalid credentials';
+      return { success: false, message: errMsg };
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = async () => {
-    setToken('');
-    setUser(null);
+  const register = async (payload) => {
+    setLoading(true);
+    try {
+      const data = await registerAPI(payload);
+      if (data.success && data.token) {
+        localStorage.setItem('dayflow_token', data.token);
+        localStorage.setItem('dayflow_user', JSON.stringify(data.user));
+        setToken(data.token);
+        setUser(data.user);
+        return { success: true, user: data.user };
+      } else {
+        return { success: false, message: data.message || 'Registration failed' };
+      }
+    } catch (error) {
+      const errMsg = error.response?.data?.message || 'Registration failed';
+      return { success: false, message: errMsg };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = () => {
     localStorage.removeItem('dayflow_token');
     localStorage.removeItem('dayflow_user');
+    setToken(null);
+    setUser(null);
   };
 
-  const value = {
-    user,
-    token,
-    isLoading,
-    authChecked: !isLoading,
-    isAuthenticated: !!user,
-    role: user ? user.role.toLowerCase() : 'employee',
-    login,
-    logout,
+  const updateCachedUser = (updatedEmployee) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const newUser = {
+        ...prev,
+        fullName: updatedEmployee.fullName !== undefined ? updatedEmployee.fullName : prev.fullName,
+        department: updatedEmployee.department !== undefined ? updatedEmployee.department : prev.department,
+        designation: updatedEmployee.designation !== undefined ? updatedEmployee.designation : prev.designation,
+        phone: updatedEmployee.phone !== undefined ? updatedEmployee.phone : prev.phone,
+        address: updatedEmployee.address !== undefined ? updatedEmployee.address : prev.address,
+        profilePicture: updatedEmployee.profilePicture !== undefined ? updatedEmployee.profilePicture : prev.profilePicture,
+      };
+      localStorage.setItem('dayflow_user', JSON.stringify(newUser));
+      return newUser;
+    });
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  const isAuthenticated = !!user;
+  const isAdmin = user?.role === 'ADMIN';
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
-}
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        isAuthenticated,
+        isAdmin,
+        login,
+        register,
+        logout,
+        updateCachedUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

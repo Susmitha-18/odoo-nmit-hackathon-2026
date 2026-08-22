@@ -1,19 +1,29 @@
-import api from './axios';
+import axiosInstance from './axiosInstance';
 
-export const employeeApi = {
-  /**
-   * Get the currently authenticated employee's own profile.
-   */
-  getMyProfile: () => api.get('/employees/me'),
+export const getMyProfileAPI = async () => {
+  const response = await axiosInstance.get('/employees');
+  return {
+    success: response.data.success,
+    profile: response.data.employees?.[0] || null
+  };
+};
 
-  /**
-   * Update own profile — only address, phone allowed for employees.
-   * @param {{ phone?, address? }} data
-   */
-  updateMyProfile: (data) => api.put('/employees/me', data),
+export const updateMyProfileAPI = async (id, data) => {
+  const response = await axiosInstance.put(`/employees/${id}`, data);
+  return response.data;
+};
 
-  /**
-   * Get a specific employee by ID (Admin only in practice).
-   */
-  getById: (id) => api.get(`/employees/${id}`),
+export const getAllEmployeesAPI = async () => {
+  const response = await axiosInstance.get('/employees');
+  return response.data;
+};
+
+export const getEmployeeByIdAPI = async (id) => {
+  const response = await axiosInstance.get(`/employees/${id}`);
+  return response.data;
+};
+
+export const updateEmployeeByAdminAPI = async (id, data) => {
+  const response = await axiosInstance.put(`/employees/${id}`, data);
+  return response.data;
 };

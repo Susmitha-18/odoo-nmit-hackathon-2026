@@ -1,19 +1,23 @@
-import api from './axios';
+import axiosInstance from './axiosInstance';
 
-export const leaveApi = {
-  /**
-   * Submit a new leave request.
-   * @param {{ leaveType, startDate, endDate, remarks }} data
-   */
-  apply: (data) => api.post('/leave', data),
+export const applyLeaveAPI = async (data) => {
+  const response = await axiosInstance.post('/leaves', data);
+  return response.data;
+};
 
-  /**
-   * Get own leave requests.
-   */
-  getMyLeaves: () => api.get('/leave/me'),
+export const getMyLeavesAPI = async () => {
+  const response = await axiosInstance.get('/leaves/me');
+  return response.data;
+};
 
-  /**
-   * Get a single leave request by ID.
-   */
-  getById: (id) => api.get(`/leave/${id}`),
+export const getAllLeavesAPI = async (status) => {
+  const params = status ? { status } : {};
+  const response = await axiosInstance.get('/leaves', { params });
+  return response.data;
+};
+
+export const handleLeaveDecisionAPI = async (id, status, adminComment) => {
+  const path = status === 'Approved' ? `/leaves/${id}/approve` : `/leaves/${id}/reject`;
+  const response = await axiosInstance.put(path, { adminComment });
+  return response.data;
 };

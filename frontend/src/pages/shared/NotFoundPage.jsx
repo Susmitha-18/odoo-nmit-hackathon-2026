@@ -1,27 +1,27 @@
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Home } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 
-export default function NotFoundPage() {
+const NotFoundPage = () => {
   const navigate = useNavigate();
+
   return (
-    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
-      <div className="text-center max-w-sm">
-        <div className="text-8xl font-black text-neutral-200 mb-4 select-none">404</div>
-        <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-100 rounded-2xl mb-5">
-          <MapPin className="w-7 h-7 text-indigo-500" />
-        </div>
-        <h1 className="text-xl font-bold text-neutral-900 mb-2">Page Not Found</h1>
-        <p className="text-sm text-neutral-500 mb-8">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 mx-auto px-5 py-2.5 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
-        >
-          <Home className="w-4 h-4" />
-          Go Back
-        </button>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 text-center">
+      <div className="rounded-2xl bg-indigo-55 p-4 text-indigo-600 mb-4 border border-indigo-100 shadow-inner">
+        <HelpCircle size={40} />
       </div>
+      <h1 className="text-2xl font-black text-slate-800 tracking-tight">404 — Page Not Found</h1>
+      <p className="text-xs text-slate-450 font-medium max-w-xs mt-2 leading-relaxed">
+        The page you are looking for does not exist or has been moved to another location.
+      </p>
+      <button
+        onClick={() => navigate(-1)}
+        className="mt-6 rounded-xl bg-indigo-605 hover:bg-indigo-700 text-white px-5 py-2.5 text-xs font-semibold shadow-sm transition-colors"
+      >
+        Go Back
+      </button>
     </div>
   );
-}
+};
+
+export default NotFoundPage;

@@ -1,24 +1,26 @@
-import api from './axios';
+import axiosInstance from './axiosInstance';
 
-export const attendanceApi = {
-  /**
-   * Record check-in for the currently authenticated employee.
-   */
-  checkIn: () => api.post('/attendance/checkin'),
+export const checkInAPI = async () => {
+  const response = await axiosInstance.post('/attendance/check-in');
+  return response.data;
+};
 
-  /**
-   * Record check-out for the currently authenticated employee.
-   */
-  checkOut: () => api.post('/attendance/checkout'),
+export const checkOutAPI = async () => {
+  const response = await axiosInstance.post('/attendance/check-out');
+  return response.data;
+};
 
-  /**
-   * Get own attendance records.
-   * @param {{ startDate?, endDate?, week? }} params
-   */
-  getMyAttendance: (params = {}) => api.get('/attendance/me', { params }),
+export const getTodayStatusAPI = async () => {
+  const response = await axiosInstance.get('/attendance/status/today');
+  return response.data;
+};
 
-  /**
-   * Get today's attendance record for the current employee.
-   */
-  getToday: () => api.get('/attendance/me/today'),
+export const getMyAttendanceAPI = async () => {
+  const response = await axiosInstance.get('/attendance/me');
+  return response.data;
+};
+
+export const getAllAttendanceAPI = async (params = {}) => {
+  const response = await axiosInstance.get('/attendance/all', { params });
+  return response.data;
 };

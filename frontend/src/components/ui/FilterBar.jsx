@@ -1,43 +1,35 @@
-/**
- * FilterBar — renders a row of labeled select dropdowns.
- * Props:
- *   filters: [{ key, label, options: [{value, label}], value }]
- *   onChange: (key, value) => void
- *   onReset: () => void
- */
-export default function FilterBar({ filters, onChange, onReset, className = '' }) {
-  const hasActive = filters.some((f) => f.value);
+import React from 'react';
+import { Filter } from 'lucide-react';
+
+const FilterBar = ({ filters = [] }) => {
+  if (filters.length === 0) return null;
 
   return (
-    <div className={`flex flex-wrap items-center gap-3 ${className}`}>
-      {filters.map((filter) => (
-        <div key={filter.key} className="flex flex-col gap-0.5">
-          {filter.label && (
-            <label className="text-xs font-medium text-neutral-500">{filter.label}</label>
-          )}
-          <select
-            value={filter.value || ''}
-            onChange={(e) => onChange(filter.key, e.target.value)}
-            className="text-sm border border-neutral-200 rounded-lg px-3 py-2 bg-white text-neutral-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-colors min-w-[130px]"
-          >
-            <option value="">All {filter.label || ''}</option>
-            {filter.options.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      ))}
-      {hasActive && onReset && (
-        <button
-          type="button"
-          onClick={onReset}
-          className="self-end text-xs text-indigo-600 hover:text-indigo-800 font-medium pb-2 transition-colors"
-        >
-          Clear filters
-        </button>
-      )}
+    <div className="flex flex-wrap items-center gap-3.5">
+      <div className="flex items-center space-x-1.5 text-slate-500 text-sm font-medium">
+        <Filter size={16} />
+        <span>Filters:</span>
+      </div>
+      <div className="flex flex-wrap gap-2.5">
+        {filters.map((f, idx) => (
+          <div key={idx} className="flex items-center">
+            <select
+              value={f.value}
+              onChange={(e) => f.onChange(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-sm hover:border-slate-350 transition-colors"
+            >
+              <option value="">{f.placeholder || `All ${f.label}`}</option>
+              {f.options.map((opt, optIdx) => (
+                <option key={optIdx} value={opt.value ?? opt}>
+                  {opt.label ?? opt}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+      </div>
     </div>
   );
-}
+};
+
+export default FilterBar;

@@ -1,204 +1,298 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Edit3, User, Briefcase, DollarSign, Calendar, CheckCircle } from 'lucide-react';
-import { mockService } from '../../mock/mockService';
-import { LoadingState } from '../../components/ui/States';
-import { FormInput, FormSelect } from '../../components/ui/FormInput';
-import toast from 'react-hot-toast';
+import React, { useEffect, useState } from 'react';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { getEmployeeByIdAPI, updateEmployeeByAdminAPI } from '../../api/employee.api';
+import { getAllPayrollsAPI } from '../../api/payroll.api';
+import { getAllAttendanceAPI } from '../../api/attendance.api';
+import { getAllLeavesAPI } from '../../api/leave.api';
+import { useToast } from '../../context/ToastContext';
+import { Edit2, Save, X, ChevronLeft, Calendar, Shield, CreditCard } from 'lucide-react';
+import EmployeeDetails from '../../components/employee/EmployeeDetails';
+import SalaryEditor from '../../components/employee/SalaryEditor';
+import LoadingState from '../../components/ui/LoadingState';
+import ErrorState from '../../components/ui/ErrorState';
 
-export default function EmployeeDetail() {
+const EmployeeDetail = () => {
   const { id } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [employee, setEmployee] = useState(null);
-  const [salary, setSalary] = useState(null);
+  const { showToast } = useToast();
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // Data states
+  const [profile, setProfile] = useState(null);
+  const [payroll, setPayroll] = useState(null);
+  const [attendance, setAttendance] = useState([]);
+  const [leaves, setLeaves] = useState([]);
+
+  // Editing state
   const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
 
-  // Form State for Admin editing
-  const [formData, setFormData] = useState({});
+  // Edit fields
+  const [fullName, setFullName] = useState('');
+  const [department, setDepartment] = useState('');
+  const [designation, setDesignation] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [joiningDate, setJoiningDate] = useState('');
 
-  useEffect(() => {
-    Promise.all([
-      mockService.getEmployeeById(id),
-      mockService.getEmployeePayroll(id),
-    ]).then(([empRes, salRes]) => {
-      setEmployee(empRes.data);
-      setSalary(salRes.data);
-      setFormData(empRes.data);
-    }).catch(() => {
-      toast.error('Failed to find employee record');
-      navigate('/admin/employees');
-    }).finally(() => setIsLoading(false));
-  }, [id, navigate]);
-
-  if (isLoading) return <LoadingState message="Loading employee details..." />;
-  if (!employee) return null;
-
-  const handleChange = (field, val) => {
-    setFormData(prev => ({ ...prev, [field]: val }));
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
+  const fetchEmployeeData = async () => {
     try {
-      const res = await mockService.updateEmployee(id, formData);
-      setEmployee(res.data);
-      setIsEditing(false);
-      toast.success('Employee updated successfully!');
-    } catch {
-      toast.error('Failed to update employee details');
+      setError('');
+      const profRes = await getEmployeeByIdAPI(id);
+
+      if (profRes.success && profRes.employee) {
+        const emp = profRes.employee;
+        setProfile(emp);
+
+        // Pre-fill edits
+        setFullName(emp.fullName || '');
+        setDepartment(emp.department || '');
+        setDesignation(emp.designation || '');
+        setPhone(emp.phone || '');
+        setAddress(emp.address || '');
+        setAvatarUrl(emp.profilePicture || '');
+        setJoiningDate(emp.joiningDate ? emp.joiningDate.split('T')[0] : '');
+
+        // Now run secondary fetches using employee ID
+        const [payrollsRes, attRes, leavesRes] = await Promise.all([
+          getAllPayrollsAPI().catch(() => ({ success: false })),
+          getAllAttendanceAPI({ employeeId: emp.employeeId }).catch(() => ({ success: false })),
+          getAllLeavesAPI().catch(() => ({ success: false })),
+        ]);
+
+        if (payrollsRes.success && payrollsRes.payrolls) {
+          const matched = payrollsRes.payrolls.find((p) => p.employeeId === emp.employeeId);
+          setPayroll(matched || null);
+        }
+
+        if (attRes.success && attRes.attendance) {
+          setAttendance(attRes.attendance);
+        }
+
+        if (leavesRes.success && leavesRes.leaves) {
+          const matchedLeaves = leavesRes.leaves.filter((l) => l.employeeId === emp.employeeId);
+          setLeaves(matchedLeaves);
+        }
+      } else {
+        setError('Employee not found.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Unable to load employee information.');
     } finally {
-      setIsSaving(false);
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchEmployeeData();
+  }, [id]);
+
+  // Sync editing mode from query params
+  useEffect(() => {
+    if (searchParams.get('edit') === 'true') {
+      setIsEditing(true);
+    } else {
+      setIsEditing(false);
+    }
+  }, [searchParams]);
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    setSaveLoading(true);
+
+    const payload = {
+      fullName,
+      department,
+      designation,
+      phone,
+      address,
+      profilePicture: avatarUrl,
+      joiningDate,
+    };
+
+    try {
+      const res = await updateEmployeeByAdminAPI(id, payload);
+      if (res.success && res.employee) {
+        showToast('Employee profile updated successfully!', 'success');
+        setProfile(res.employee);
+        setSearchParams({}); // removes the edit flag
+      } else {
+        showToast(res.message || 'Failed to update employee.', 'error');
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Server error during update.', 'error');
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  if (loading) return <LoadingState message="Loading profile details..." />;
+  if (error) return <ErrorState message={error} onRetry={fetchEmployeeData} />;
+
   return (
-    <div className="max-w-4xl space-y-6">
-      {/* Top action bar */}
-      <div className="flex items-center justify-between">
-        <Link to="/admin/employees" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 font-medium">
-          <ArrowLeft size={16} /> Back to Directory
-        </Link>
-        <div className="flex gap-2">
-          {!isEditing ? (
-            <button onClick={() => setIsEditing(true)} className="btn-primary btn btn-sm inline-flex items-center gap-1.5">
-              <Edit3 size={14} /> Edit Full Profile
-            </button>
-          ) : (
-            <button onClick={() => setIsEditing(false)} className="btn-secondary btn btn-sm">
-              Cancel
-            </button>
-          )}
-        </div>
-      </div>
+    <div className="space-y-6">
+      {/* Back & Actions header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+        <button
+          onClick={() => navigate('/admin/employees')}
+          className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+        >
+          <ChevronLeft size={16} />
+          <span>Back to Employees</span>
+        </button>
 
-      {/* Header Profile Card */}
-      <div className="card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-l-4 border-indigo-600">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-2xl">
-            {employee.firstName?.[0]}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-gray-900">{employee.firstName} {employee.lastName}</h2>
-              <span className={`badge ${employee.isActive ? 'badge-approved' : 'badge-rejected'}`}>
-                {employee.isActive ? 'Active' : 'Inactive'}
-              </span>
-            </div>
-            <p className="text-sm text-gray-500">{employee.designation} · {employee.department}</p>
-            <p className="text-xs font-mono text-gray-400 mt-0.5">ID: {employee.employeeId}</p>
-          </div>
-        </div>
-        <div className="text-right">
-          <span className="text-xs text-gray-400">Role Privilege</span>
-          <p className="text-sm font-semibold text-indigo-700">Full HR Admin Access</p>
-        </div>
-      </div>
-
-      {/* Profile Form (View or Edit) */}
-      <form onSubmit={handleSave} className="space-y-6">
-        {/* Personal Details */}
-        <div className="card">
-          <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
-            <User size={18} className="text-indigo-600" />
-            <h3 className="font-semibold text-gray-900">Personal Information</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormInput
-              id="firstName"
-              label="First Name"
-              disabled={!isEditing}
-              value={formData.firstName || ''}
-              onChange={(e) => handleChange('firstName', e.target.value)}
-            />
-            <FormInput
-              id="lastName"
-              label="Last Name"
-              disabled={!isEditing}
-              value={formData.lastName || ''}
-              onChange={(e) => handleChange('lastName', e.target.value)}
-            />
-            <FormInput
-              id="email"
-              label="Work Email"
-              disabled={!isEditing}
-              value={formData.email || ''}
-              onChange={(e) => handleChange('email', e.target.value)}
-            />
-            <FormInput
-              id="phone"
-              label="Phone Number"
-              disabled={!isEditing}
-              value={formData.phone || ''}
-              onChange={(e) => handleChange('phone', e.target.value)}
-            />
-            <div className="md:col-span-2">
-              <FormInput
-                id="address"
-                label="Residential Address"
-                disabled={!isEditing}
-                value={formData.address || ''}
-                onChange={(e) => handleChange('address', e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Job & Organization Details */}
-        <div className="card">
-          <div className="flex items-center gap-2 mb-4 border-b border-gray-100 pb-3">
-            <Briefcase size={18} className="text-indigo-600" />
-            <h3 className="font-semibold text-gray-900">Job & Department Information</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormInput
-              id="department"
-              label="Department"
-              disabled={!isEditing}
-              value={formData.department || ''}
-              onChange={(e) => handleChange('department', e.target.value)}
-            />
-            <FormInput
-              id="designation"
-              label="Designation / Role"
-              disabled={!isEditing}
-              value={formData.designation || ''}
-              onChange={(e) => handleChange('designation', e.target.value)}
-            />
-            <FormSelect
-              id="employmentType"
-              label="Employment Type"
-              disabled={!isEditing}
-              value={formData.employmentType || 'full-time'}
-              onChange={(e) => handleChange('employmentType', e.target.value)}
+        {!isEditing ? (
+          <button
+            onClick={() => setSearchParams({ edit: 'true' })}
+            className="inline-flex items-center space-x-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 text-xs font-semibold shadow-sm transition-colors"
+          >
+            <Edit2 size={14} />
+            <span>Edit Employee Profile</span>
+          </button>
+        ) : (
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setSearchParams({})}
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-650 px-4 py-2.5 text-xs font-semibold transition-colors"
             >
-              <option value="full-time">Full-time Regular</option>
-              <option value="part-time">Part-time</option>
-              <option value="contract">Contractor</option>
-            </FormSelect>
-            <FormInput
-              id="reportingManager"
-              label="Reporting Manager"
-              disabled={!isEditing}
-              value={formData.reportingManager || ''}
-              onChange={(e) => handleChange('reportingManager', e.target.value)}
-            />
-          </div>
-        </div>
-
-        {isEditing && (
-          <div className="flex justify-end gap-3">
-            <button type="button" onClick={() => setIsEditing(false)} className="btn-secondary btn">
-              Cancel
+              <X size={14} />
+              <span>Cancel</span>
             </button>
-            <button type="submit" disabled={isSaving} className="btn-primary btn">
-              <Save size={16} /> {isSaving ? 'Saving Changes...' : 'Save All Changes'}
+            <button
+              onClick={handleUpdate}
+              disabled={saveLoading}
+              className="inline-flex items-center space-x-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-4 py-2.5 text-xs font-semibold shadow-sm transition-colors"
+            >
+              {saveLoading ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white"></div>
+              ) : (
+                <Save size={14} />
+              )}
+              <span>Save Changes</span>
             </button>
           </div>
         )}
-      </form>
+      </div>
+
+      {/* Editing Layout */}
+      {isEditing && (
+        <form onSubmit={handleUpdate} className="rounded-2xl border border-indigo-150 bg-indigo-50/10 p-6 shadow-inner space-y-4">
+          <div className="pb-2.5 border-b border-indigo-100 flex items-center space-x-2">
+            <Shield size={16} className="text-indigo-600" />
+            <span className="text-xs font-bold text-indigo-905 uppercase tracking-wide">
+              Administrator Master Edit Panel
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {/* Full Name */}
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Full Name</label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                required
+              />
+            </div>
+
+            {/* Joining Date */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Joining Date</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={joiningDate}
+                  onChange={(e) => setJoiningDate(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer"
+                />
+              </div>
+            </div>
+
+            {/* Department */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Department</label>
+              <input
+                type="text"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                required
+              />
+            </div>
+
+            {/* Designation */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Designation / Job Title</label>
+              <input
+                type="text"
+                value={designation}
+                onChange={(e) => setDesignation(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                required
+              />
+            </div>
+
+            {/* Phone */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Phone Number</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+              />
+            </div>
+
+            {/* Avatar URL */}
+            <div className="space-y-1 md:col-span-3">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Avatar Picture URL</label>
+              <input
+                type="url"
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+              />
+            </div>
+
+            {/* Address */}
+            <div className="space-y-1 md:col-span-3">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Residential Address</label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+              />
+            </div>
+          </div>
+        </form>
+      )}
+
+      {/* Main Details View */}
+      <EmployeeDetails
+        profile={profile}
+        payroll={payroll}
+        attendanceList={attendance}
+        leaveList={leaves}
+      />
+
+      {/* Salary Editor Section (Only Visible to Admin) */}
+      <div className="mt-8">
+        <SalaryEditor
+          employeeId={profile.employeeId}
+          initialPayroll={payroll}
+          onUpdateSuccess={(newPayroll) => setPayroll(newPayroll)}
+        />
+      </div>
     </div>
   );
-}
+};
+
+export default EmployeeDetail;

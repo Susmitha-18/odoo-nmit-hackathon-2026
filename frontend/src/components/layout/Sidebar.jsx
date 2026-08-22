@@ -1,43 +1,37 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
   User,
-  CalendarCheck,
-  CalendarOff,
-  Wallet,
-  X,
+  Users,
+  Clock,
+  CalendarDays,
+  CreditCard,
   LogOut,
-  ShieldCheck,
-  Users
+  X
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 
-const EMPLOYEE_ITEMS = [
-  { to: '/employee/dashboard',  label: 'Dashboard',   Icon: LayoutDashboard },
-  { to: '/employee/profile',    label: 'My Profile',  Icon: User            },
-  { to: '/employee/attendance', label: 'Attendance',  Icon: CalendarCheck   },
-  { to: '/employee/leave',      label: 'Leave Requests', Icon: CalendarOff   },
-  { to: '/employee/payroll',    label: 'Payroll',     Icon: Wallet          },
-];
+const Sidebar = ({ isOpen, toggleSidebar }) => {
+  const { user, isAdmin, logout } = useAuth();
 
-const ADMIN_ITEMS = [
-  { to: '/admin/dashboard',  label: 'Dashboard',    Icon: LayoutDashboard },
-  { to: '/admin/employees',  label: 'Employees',    Icon: Users           },
-  { to: '/admin/attendance', label: 'Attendance',   Icon: CalendarCheck   },
-  { to: '/admin/leave',      label: 'Leave Approvals', Icon: CalendarOff  },
-  { to: '/admin/payroll',    label: 'Payroll',      Icon: Wallet          },
-];
+  const employeeLinks = [
+    { name: 'Dashboard', path: '/employee/dashboard', icon: LayoutDashboard },
+    { name: 'My Profile', path: '/employee/profile', icon: User },
+    { name: 'Attendance', path: '/employee/attendance', icon: Clock },
+    { name: 'Leave', path: '/employee/leave', icon: CalendarDays },
+    { name: 'Payroll', path: '/employee/payroll', icon: CreditCard },
+  ];
 
-export default function Sidebar({ isOpen, onClose }) {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const adminLinks = [
+    { name: 'Admin Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+    { name: 'Employees', path: '/admin/employees', icon: Users },
+    { name: 'Attendance Logs', path: '/admin/attendance', icon: Clock },
+    { name: 'Leave Requests', path: '/admin/leaves', icon: CalendarDays },
+    { name: 'Payroll Mgmt', path: '/admin/payroll', icon: CreditCard },
+  ];
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-    if (onClose) onClose();
-  };
+  const links = isAdmin ? adminLinks : employeeLinks;
 
   const isAdmin = user?.role === 'ADMIN';
   const navItems = isAdmin ? ADMIN_ITEMS : EMPLOYEE_ITEMS;
@@ -56,33 +50,46 @@ export default function Sidebar({ isOpen, onClose }) {
       {/* Mobile Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/45 z-30 lg:hidden backdrop-blur-sm"
-          onClick={onClose}
-          aria-hidden="true"
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
+          onClick={toggleSidebar}
         />
       )}
 
-      {/* Sidebar Panel */}
       <aside
-        className={`
-          fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-100 z-40
-          flex flex-col transition-transform duration-250 ease-in-out
-          ${isOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}
-          lg:translate-x-0 lg:static lg:z-auto
-        `}
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-300 lg:static lg:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
-        {/* Logo and Brand */}
-        <div className="flex items-center justify-between px-5 py-5 border-b border-gray-50">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${isAdmin ? 'bg-indigo-600' : 'bg-primary-600'}`}>
-              <span className="text-white font-bold text-sm">D</span>
-            </div>
-            <div>
-              <span className="font-semibold text-gray-900 text-base block tracking-tight">Dayflow</span>
-              <span className={`text-[10px] font-semibold uppercase tracking-wide ${isAdmin ? 'text-indigo-600' : 'text-primary-600'}`}>
-                {isAdmin ? 'Management Portal' : 'Employee Self-Service'}
-              </span>
-            </div>
+        {/* Header / Logo */}
+        <div className="flex h-16 items-center justify-between px-6 border-b border-slate-100">
+          <div className="flex items-center space-x-2.5">
+            <img src="/dayflow_logo.jpg" alt="Dayflow Logo" className="h-9 w-9 rounded-xl object-cover shadow-sm" />
+            <span className="text-xl font-bold tracking-tight text-slate-800">
+              Dayflow<span className="text-indigo-600 font-extrabold font-sans">.</span>
+            </span>
+          </div>
+          <button
+            onClick={toggleSidebar}
+            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* User Card (Quick View) */}
+        <div className="p-4 mx-4 my-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center space-x-3">
+          <img
+            src={user?.profilePicture || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150'}
+            alt="User Avatar"
+            className="h-10 w-10 rounded-full object-cover border border-white shadow-sm"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-800 truncate">
+              {user?.fullName || 'User'}
+            </p>
+            <p className="text-xs text-slate-500 truncate capitalize font-medium">
+              {user?.role === 'ADMIN' ? 'HR Administrator' : user?.designation || 'Employee'}
+            </p>
           </div>
           {/* Mobile Close Button */}
           <button
@@ -94,46 +101,53 @@ export default function Sidebar({ isOpen, onClose }) {
           </button>
         </div>
 
-        {/* Role Badge Indicator */}
-        <div className="mx-3 mt-3.5 mb-1.5 flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-100 rounded-lg">
-          <ShieldCheck size={14} className={isAdmin ? 'text-indigo-600' : 'text-primary-600'} />
-          <span className={`text-xs font-semibold ${isAdmin ? 'text-indigo-700' : 'text-primary-700'}`}>
-            {isAdmin ? 'HR & Admin Officer' : 'Staff Employee'}
-          </span>
-        </div>
-
-        {/* Navigation list */}
-        <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
-          {navItems.map(({ to, label, Icon }) => (
-            <NavLink key={to} to={to} className={linkClass} onClick={onClose}>
-              <Icon size={18} />
-              {label}
-            </NavLink>
-          ))}
+        {/* Links */}
+        <nav className="flex-1 space-y-1.5 px-4 py-3 overflow-y-auto">
+          {links.map((link) => {
+            const Icon = link.icon;
+            return (
+              <NavLink
+                key={link.path}
+                to={link.path}
+                onClick={() => {
+                  if (window.innerWidth < 1024) toggleSidebar();
+                }}
+                className={({ isActive }) =>
+                  `flex items-center space-x-3.5 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-indigo-50 text-indigo-700 shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon
+                      className={`h-5 w-5 transition-transform duration-200 ${
+                        isActive ? 'text-indigo-600 scale-105' : 'text-slate-400 group-hover:text-slate-600'
+                      }`}
+                    />
+                    <span>{link.name}</span>
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
-        {/* User profile section at the bottom */}
-        <div className="px-3 py-4 border-t border-gray-100 bg-gray-50/50">
-          <div className="flex items-center gap-3 px-3 py-2 mb-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm shadow-inner ${
-              isAdmin ? 'bg-indigo-100 text-indigo-700' : 'bg-primary-100 text-primary-700'
-            }`}>
-              {user?.fullName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{user?.fullName || 'User Session'}</p>
-              <p className="text-[11px] text-gray-400 truncate">{user?.email}</p>
-            </div>
-          </div>
+        {/* Footer / Logout */}
+        <div className="p-4 border-t border-slate-100">
           <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+            onClick={logout}
+            className="flex w-full items-center space-x-3 rounded-xl px-4 py-3 text-sm font-medium text-red-600 transition-all duration-200 hover:bg-red-50"
           >
-            <LogOut size={18} />
-            Log out
+            <LogOut className="h-5 w-5" />
+            <span>Logout</span>
           </button>
         </div>
       </aside>
     </>
   );
-}
+};
+
+export default Sidebar;

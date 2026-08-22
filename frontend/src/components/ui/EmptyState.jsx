@@ -1,21 +1,30 @@
-import { InboxIcon } from 'lucide-react';
+import React from 'react';
+import { Inbox } from 'lucide-react';
 
-export default function EmptyState({
-  message = 'No records found.',
-  description,
-  icon: Icon = InboxIcon,
-  action,
-}) {
+const EmptyState = ({ title = "No data found", message = "There is nothing to display here at the moment.", icon: Icon = Inbox, actionText, onAction }) => {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-      <div className="bg-neutral-100 rounded-full p-4 mb-4">
-        <Icon className="w-8 h-8 text-neutral-400" />
+    <div className="flex min-h-[350px] w-full flex-col items-center justify-center space-y-4 rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center shadow-sm">
+      <div className="rounded-2xl bg-slate-50 p-4 text-slate-400 border border-slate-100 shadow-inner">
+        <Icon size={36} strokeWidth={1.5} />
       </div>
-      <p className="text-sm font-semibold text-neutral-600">{message}</p>
-      {description && (
-        <p className="text-xs text-neutral-400 mt-1 max-w-xs">{description}</p>
+      <div className="space-y-1.5 max-w-sm">
+        <h3 className="text-base font-bold text-slate-800 tracking-tight">
+          {title}
+        </h3>
+        <p className="text-xs text-slate-400 leading-relaxed font-medium">
+          {message}
+        </p>
+      </div>
+      {actionText && onAction && (
+        <button
+          onClick={onAction}
+          className="rounded-xl bg-indigo-600 px-4.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+        >
+          {actionText}
+        </button>
       )}
-      {action && <div className="mt-4">{action}</div>}
     </div>
   );
-}
+};
+
+export default EmptyState;

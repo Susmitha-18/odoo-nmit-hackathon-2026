@@ -1,23 +1,32 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+// Guards
 import ProtectedRoute from './ProtectedRoute';
+import AdminRoute from './AdminRoute';
+import EmployeeRoute from './EmployeeRoute';
 
-// Auth pages
-import Login from '../pages/auth/Login';
-import Register from '../pages/auth/Register';
-import CheckEmail from '../pages/auth/CheckEmail';
+// Layouts
+import EmployeeLayout from '../components/layout/EmployeeLayout';
+import AdminLayout from '../components/layout/AdminLayout';
 
-// Layout wrapper
-import Layout from '../components/layout/Layout';
+// Auth Pages
+import LoginPage from '../pages/auth/LoginPage';
+import RegisterPage from '../pages/auth/RegisterPage';
 
-// Employee pages
-import Dashboard from '../pages/employee/Dashboard';
-import Profile from '../pages/employee/Profile';
-import Attendance from '../pages/employee/Attendance';
-import Leave from '../pages/employee/Leave';
-import Payroll from '../pages/employee/Payroll';
+// Shared Pages
+import NotFoundPage from '../pages/shared/NotFoundPage';
+import UnauthorizedPage from '../pages/shared/UnauthorizedPage';
 
-// Admin / HR pages
+// Employee Portal Pages
+import EmployeeDashboard from '../pages/employee/EmployeeDashboard';
+import EmployeeProfile from '../pages/employee/EmployeeProfile';
+import EmployeeAttendance from '../pages/employee/EmployeeAttendance';
+import EmployeeLeave from '../pages/employee/EmployeeLeave';
+import EmployeePayroll from '../pages/employee/EmployeePayroll';
+
+// Admin Operations Pages
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import EmployeeList from '../pages/admin/EmployeeList';
 import EmployeeDetail from '../pages/admin/EmployeeDetail';
@@ -25,66 +34,61 @@ import AttendanceManagement from '../pages/admin/AttendanceManagement';
 import LeaveApproval from '../pages/admin/LeaveApproval';
 import PayrollManagement from '../pages/admin/PayrollManagement';
 
-export default function AppRouter() {
+const AppRouter = () => {
+  const { isAuthenticated, isAdmin } = useAuth();
+
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/check-email" element={<CheckEmail />} />
+    <BrowserRouter>
+      <Routes>
+        {/* Public Routes */}
+        <Route
+          path="/"
+          element={
+            isAuthenticated ? (
+              isAdmin ? (
+                <Navigate to="/admin/dashboard" replace />
+              ) : (
+                <Navigate to="/employee/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-      {/* Employee Experience (Self-service Portal) */}
-      <Route
-        path="/employee"
-        element={
-          <ProtectedRoute role="employee">
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="attendance" element={<Attendance />} />
-        <Route path="leave" element={<Leave />} />
-        <Route path="payroll" element={<Payroll />} />
-      </Route>
+        {/* Protected Employee Routes */}
+        <Route element={<EmployeeRoute />}>
+          <Route element={<EmployeeLayout />}>
+            <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
+            <Route path="/employee/profile" element={<EmployeeProfile />} />
+            <Route path="/employee/attendance" element={<EmployeeAttendance />} />
+            <Route path="/employee/leave" element={<EmployeeLeave />} />
+            <Route path="/employee/payroll" element={<EmployeePayroll />} />
+          </Route>
+        </Route>
 
-      {/* Admin / HR Officer Experience (Management Portal) */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute role="admin">
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="employees" element={<EmployeeList />} />
-        <Route path="employees/:id" element={<EmployeeDetail />} />
-        <Route path="attendance" element={<AttendanceManagement />} />
-        <Route path="leave" element={<LeaveApproval />} />
-        <Route path="payroll" element={<PayrollManagement />} />
-      </Route>
+        {/* Protected Admin Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AdminRoute />}>
+            <Route element={<AdminLayout />}>
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/employees" element={<EmployeeList />} />
+              <Route path="/admin/employees/:id" element={<EmployeeDetail />} />
+              <Route path="/admin/attendance" element={<AttendancePage />} />
+              <Route path="/admin/leaves" element={<LeaveManagement />} />
+              <Route path="/admin/payroll" element={<PayrollManagement />} />
+            </Route>
+          </Route>
+        </Route>
 
-      {/* Default root goes to login */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-
-      {/* 404 fallback */}
-      <Route
-        path="*"
-        element={
-          <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-gray-500 bg-gray-50 p-6">
-            <p className="text-6xl font-bold text-gray-200">404</p>
-            <p className="text-lg font-medium text-gray-700">Page not found</p>
-            <div className="flex gap-3">
-              <a href="/employee/dashboard" className="btn-primary btn btn-sm">Employee Portal</a>
-              <a href="/admin/dashboard" className="btn-secondary btn btn-sm">Admin Portal</a>
-            </div>
-          </div>
-        }
-      />
-    </Routes>
+        {/* 404 Catch-all */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </BrowserRouter>
   );
-}
+};
+
+export default AppRouter;

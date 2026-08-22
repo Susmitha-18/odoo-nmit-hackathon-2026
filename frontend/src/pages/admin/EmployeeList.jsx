@@ -1,127 +1,214 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { getAllEmployeesAPI } from '../../api/employee.api';
+import { Eye, Edit2, Search, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Users, Search, Plus, Filter, Eye, Edit, Check, X } from 'lucide-react';
-import { mockService } from '../../mock/mockService';
-import { LoadingState } from '../../components/ui/States';
-import { formatDate } from '../../utils/dateUtils';
+import DataTable from '../../components/ui/DataTable';
+import SearchBar from '../../components/ui/SearchBar';
+import FilterBar from '../../components/ui/FilterBar';
+import LoadingState from '../../components/ui/LoadingState';
+import ErrorState from '../../components/ui/ErrorState';
 
-export default function EmployeeList() {
+const EmployeeList = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [employees, setEmployees] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('ALL');
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Search/Filters
+  const [searchVal, setSearchVal] = useState('');
+  const [deptFilter, setDeptFilter] = useState('');
+  const [desigFilter, setDesigFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+
+  const fetchEmployees = async () => {
+    try {
+      setError('');
+      const res = await getAllEmployeesAPI();
+      if (res.success) {
+        setEmployees(res.employees || []);
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Unable to load employee list. Verify backend database status.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    mockService.getAllEmployees().then(res => {
-      setEmployees(res.data || []);
-    }).finally(() => setIsLoading(false));
+    fetchEmployees();
   }, []);
 
-  if (isLoading) return <LoadingState message="Loading workforce directory..." />;
+  // Filter lists
+  const departments = Array.from(new Set(employees.map(e => e.department).filter(Boolean)));
+  const designations = Array.from(new Set(employees.map(e => e.designation).filter(Boolean)));
 
-  const departments = ['ALL', ...new Set(employees.map(e => e.department))];
+  const filteredEmployees = employees.filter((e) => {
+    const fullName = (e.fullName || '').toLowerCase();
+    const empId = (e.employeeId || '').toLowerCase();
+    const email = (e.user?.email || '').toLowerCase();
+    const matchSearch =
+      fullName.includes(searchVal.toLowerCase()) ||
+      empId.includes(searchVal.toLowerCase()) ||
+      email.includes(searchVal.toLowerCase());
 
-  const filtered = employees.filter(emp => {
-    const matchesSearch =
-      `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDept = departmentFilter === 'ALL' || emp.department === departmentFilter;
-    return matchesSearch && matchesDept;
+    const matchDept = !deptFilter || e.department === deptFilter;
+    const matchDesig = !desigFilter || e.designation === desigFilter;
+    const matchRole = !roleFilter || e.user?.role === roleFilter;
+
+    return matchSearch && matchDept && matchDesig && matchRole;
   });
 
-  return (
-    <div className="space-y-6 max-w-7xl">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Employee Management</h2>
-          <p className="text-sm text-gray-500">View and update complete employee profiles and employment terms.</p>
-        </div>
-      </div>
+  const filters = [
+    {
+      label: 'Department',
+      value: deptFilter,
+      onChange: setDeptFilter,
+      options: departments,
+    },
+    {
+      label: 'Designation',
+      value: desigFilter,
+      onChange: setDesigFilter,
+      options: designations,
+    },
+    {
+      label: 'Role',
+      value: roleFilter,
+      onChange: setRoleFilter,
+      options: [
+        { label: 'Standard Employee', value: 'EMPLOYEE' },
+        { label: 'HR Administrator', value: 'ADMIN' },
+      ],
+    },
+  ];
 
-      {/* Filter and Search Bar */}
-      <div className="card !p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by name, ID, or email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="form-input pl-9 text-sm"
+  const columns = [
+    {
+      header: 'Employee ID',
+      accessor: 'employeeId',
+      render: (row) => <span className="font-extrabold text-indigo-650">{row.employeeId}</span>,
+    },
+    {
+      header: 'Full Name',
+      accessor: 'firstName',
+      render: (row) => (
+        <div className="flex items-center space-x-3">
+          <img
+            src={row.profilePicture || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150'}
+            alt="Avatar"
+            className="h-8 w-8 rounded-full object-cover border border-slate-200"
           />
+          <div>
+            <p className="text-xs font-bold text-slate-800 leading-tight">
+              {row.fullName}
+            </p>
+            <p className="text-[10px] text-slate-400 font-medium">{row.userId?.email || row.user?.email}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Filter size={16} className="text-gray-400" />
-          <select
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="form-select text-sm !w-auto"
+      ),
+    },
+    {
+      header: 'Department',
+      accessor: 'department',
+      render: (row) => <span className="text-xs font-semibold text-slate-650">{row.department}</span>,
+    },
+    {
+      header: 'Designation',
+      accessor: 'designation',
+      render: (row) => <span className="text-xs text-slate-600 font-medium">{row.designation}</span>,
+    },
+    {
+      header: 'Role',
+      accessor: 'role',
+      render: (row) => (
+        <span
+          className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+            row.user?.role === 'ADMIN'
+              ? 'bg-purple-50 text-purple-700 border-purple-100'
+              : 'bg-slate-50 text-slate-700 border-slate-100'
+          }`}
+        >
+          {row.user?.role === 'ADMIN' ? 'HR Admin' : 'Employee'}
+        </span>
+      ),
+    },
+    {
+      header: 'Joining Date',
+      accessor: 'joiningDate',
+      render: (row) => (
+        <span className="text-xs text-slate-500 font-medium">
+          {row.joiningDate ? new Date(row.joiningDate).toLocaleDateString() : 'N/A'}
+        </span>
+      ),
+    },
+    {
+      header: 'Actions',
+      accessor: '_id',
+      render: (row) => (
+        <div className="flex items-center space-x-3.5">
+          <Link
+            to={`/admin/employees/${row._id}`}
+            className="inline-flex items-center space-x-1.5 font-bold text-xs text-indigo-600 hover:text-indigo-800 transition-colors"
           >
-            {departments.map(d => (
-              <option key={d} value={d}>{d === 'ALL' ? 'All Departments' : d}</option>
-            ))}
-          </select>
+            <Eye size={13} />
+            <span>View</span>
+          </Link>
+          <Link
+            to={`/admin/employees/${row._id}?edit=true`}
+            className="inline-flex items-center space-x-1.5 font-bold text-xs text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            <Edit2 size={13} />
+            <span>Edit</span>
+          </Link>
         </div>
+      ),
+    },
+  ];
+
+  if (loading) return <LoadingState message="Fetching employee catalog..." />;
+  if (error) return <ErrorState message={error} onRetry={fetchEmployees} />;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+        <div>
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">
+            Employee Directory
+          </h1>
+          <p className="text-xs font-medium text-slate-500">
+            Search, filter, and modify profiles for employees.
+          </p>
+        </div>
+
+        <Link
+          to="/register"
+          className="inline-flex items-center space-x-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 text-xs font-semibold shadow-sm transition-colors"
+        >
+          <Plus size={14} />
+          <span>Onboard Employee</span>
+        </Link>
       </div>
 
-      {/* Table */}
-      <div className="card overflow-hidden !p-0">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Employee</th>
-                <th>Employee ID</th>
-                <th>Department</th>
-                <th>Designation</th>
-                <th>Joining Date</th>
-                <th>Status</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((emp) => (
-                <tr key={emp._id} className="hover:bg-gray-50/80 transition-colors">
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">
-                        {emp.firstName?.[0]}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{emp.firstName} {emp.lastName}</p>
-                        <p className="text-xs text-gray-400">{emp.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="font-mono text-xs font-semibold text-gray-600">{emp.employeeId}</td>
-                  <td>
-                    <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-xs font-medium">
-                      {emp.department}
-                    </span>
-                  </td>
-                  <td className="text-gray-700">{emp.designation}</td>
-                  <td>{formatDate(emp.joiningDate)}</td>
-                  <td>
-                    <span className={`badge ${emp.isActive ? 'badge-approved' : 'badge-rejected'}`}>
-                      {emp.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="text-right">
-                    <Link
-                      to={`/admin/employees/${emp._id}`}
-                      className="btn-secondary btn btn-sm inline-flex items-center gap-1.5"
-                    >
-                      <Eye size={13} /> View & Manage
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Search and Filters Box */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4 flex flex-col md:flex-row md:items-center justify-between md:space-y-0 gap-4">
+        <SearchBar
+          value={searchVal}
+          onChange={setSearchVal}
+          placeholder="Search by ID, Name or Email..."
+          onClear={() => setSearchVal('')}
+        />
+        <FilterBar filters={filters} />
       </div>
+
+      {/* Directory Table */}
+      <DataTable
+        columns={columns}
+        data={filteredEmployees}
+        emptyMessage="No employees matching the current query were found."
+      />
     </div>
   );
-}
+};
+
+export default EmployeeList;
