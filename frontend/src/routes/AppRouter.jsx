@@ -7,8 +7,10 @@ import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
 import CheckEmail from '../pages/auth/CheckEmail';
 
+// Layout wrapper
+import Layout from '../components/layout/Layout';
+
 // Employee pages
-import EmployeeLayout from '../components/layout/EmployeeLayout';
 import Dashboard from '../pages/employee/Dashboard';
 import Profile from '../pages/employee/Profile';
 import Attendance from '../pages/employee/Attendance';
@@ -16,7 +18,6 @@ import Leave from '../pages/employee/Leave';
 import Payroll from '../pages/employee/Payroll';
 
 // Admin / HR pages
-import AdminLayout from '../components/layout/AdminLayout';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import EmployeeList from '../pages/admin/EmployeeList';
 import EmployeeDetail from '../pages/admin/EmployeeDetail';
@@ -37,7 +38,7 @@ export default function AppRouter() {
         path="/employee"
         element={
           <ProtectedRoute role="employee">
-            <EmployeeLayout />
+            <Layout />
           </ProtectedRoute>
         }
       >
@@ -54,7 +55,7 @@ export default function AppRouter() {
         path="/admin"
         element={
           <ProtectedRoute role="admin">
-            <AdminLayout />
+            <Layout />
           </ProtectedRoute>
         }
       >

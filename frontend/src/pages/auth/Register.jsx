@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { authApi } from '../../api/auth.api';
+import api from '../../api/axios';
 import { FormInput } from '../../components/ui/FormInput';
 import toast from 'react-hot-toast';
 
 const ROLES = [
-  { value: 'employee', label: 'Employee' },
-  { value: 'admin',    label: 'Admin / HR Officer' },
+  { value: 'EMPLOYEE', label: 'Employee' },
+  { value: 'ADMIN',    label: 'Admin / HR Officer' },
 ];
 
 export default function Register() {
@@ -18,7 +18,10 @@ export default function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'employee',
+    role: 'EMPLOYEE',
+    fullName: '',
+    department: 'Engineering',
+    designation: 'Software Engineer',
   });
   const [errors, setErrors]             = useState({});
   const [showPass, setShowPass]         = useState(false);
@@ -27,10 +30,11 @@ export default function Register() {
   const validate = () => {
     const e = {};
     if (!formData.employeeId.trim())    e.employeeId = 'Employee ID is required';
+    if (!formData.fullName.trim())      e.fullName = 'Full Name is required';
     if (!formData.email.trim())         e.email = 'Email is required';
     else if (!/\S+@\S+\.\S+/.test(formData.email)) e.email = 'Enter a valid email';
     if (!formData.password)             e.password = 'Password is required';
-    else if (formData.password.length < 8) e.password = 'Password must be at least 8 characters';
+    else if (formData.password.length < 6) e.password = 'Password must be at least 6 characters';
     if (formData.password !== formData.confirmPassword)
                                         e.confirmPassword = 'Passwords do not match';
     setErrors(e);
@@ -43,16 +47,19 @@ export default function Register() {
 
     setIsSubmitting(true);
     try {
-      await authApi.register({
+      await api.post('/auth/register', {
         employeeId: formData.employeeId,
         email: formData.email,
         password: formData.password,
         role: formData.role,
+        fullName: formData.fullName,
+        department: formData.department,
+        designation: formData.designation
       });
-      toast.success('Account created! Please check your email.');
-      navigate('/check-email');
+      toast.success('Account created successfully! You can now log in.');
+      navigate('/login');
     } catch (err) {
-      const msg = err?.response?.data?.message ?? 'Registration failed. Please try again.';
+      const msg = err?.response?.data?.message ?? 'Registration failed. Please check inputs.';
       setErrors({ general: msg });
       toast.error(msg);
     } finally {
@@ -66,10 +73,10 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 bg-[#FAFBFC]">
+      <div className="w-full max-w-md bg-white p-8 rounded-2xl border border-gray-100 shadow-card">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 mb-8">
+        <div className="flex items-center gap-2.5 mb-6">
           <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center">
             <span className="text-white font-bold">D</span>
           </div>
@@ -77,10 +84,10 @@ export default function Register() {
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Create account</h1>
-        <p className="text-sm text-gray-500 mb-8">Register to access the HR portal</p>
+        <p className="text-sm text-gray-400 mb-6">Register to access the HR portal</p>
 
         {errors.general && (
-          <div className="mb-4 p-3 bg-danger-50 border border-danger-100 rounded-lg text-danger-700 text-sm">
+          <div className="mb-4 p-3 bg-danger-50 border border-danger-100 rounded-lg text-danger-700 text-xs font-semibold">
             {errors.general}
           </div>
         )}
@@ -89,11 +96,21 @@ export default function Register() {
           <FormInput
             id="reg-employee-id"
             label="Employee ID"
-            placeholder="e.g. EMP-001"
+            placeholder="e.g. EMP004"
             value={formData.employeeId}
             onChange={handleChange('employeeId')}
             error={errors.employeeId}
-            autoFocus
+            required
+          />
+
+          <FormInput
+            id="reg-fullname"
+            label="Full Name"
+            placeholder="e.g. Priya Sharma"
+            value={formData.fullName}
+            onChange={handleChange('fullName')}
+            error={errors.fullName}
+            required
           />
 
           <FormInput
@@ -105,6 +122,7 @@ export default function Register() {
             onChange={handleChange('email')}
             error={errors.email}
             autoComplete="email"
+            required
           />
 
           {/* Role selector */}
@@ -129,7 +147,7 @@ export default function Register() {
               <input
                 id="reg-password"
                 type={showPass ? 'text' : 'password'}
-                placeholder="Minimum 8 characters"
+                placeholder="Minimum 6 characters"
                 value={formData.password}
                 onChange={handleChange('password')}
                 autoComplete="new-password"
@@ -162,7 +180,7 @@ export default function Register() {
             id="register-submit-btn"
             type="submit"
             disabled={isSubmitting}
-            className="btn-primary btn w-full btn-lg mt-2"
+            className="btn-primary btn w-full btn-lg mt-2 font-bold shadow-md"
           >
             {isSubmitting ? (
               <><Loader2 size={18} className="animate-spin" /> Creating account…</>
@@ -174,7 +192,7 @@ export default function Register() {
 
         <p className="text-sm text-center text-gray-500 mt-6">
           Already have an account?{' '}
-          <Link to="/login" className="text-primary-600 font-medium hover:underline">
+          <Link to="/login" className="text-primary-600 font-semibold hover:underline">
             Sign in
           </Link>
         </p>

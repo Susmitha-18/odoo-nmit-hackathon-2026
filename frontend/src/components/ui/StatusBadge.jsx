@@ -11,14 +11,15 @@ import { Circle } from 'lucide-react';
 
 const BADGE_CONFIG = {
   // Attendance statuses
-  present:   { label: 'Present',   className: 'badge-present'  },
-  absent:    { label: 'Absent',    className: 'badge-absent'   },
-  'half-day':{ label: 'Half Day',  className: 'badge-half-day' },
-  leave:     { label: 'On Leave',  className: 'badge-leave'    },
+  present:   { label: 'Present',   className: 'badge bg-success-100 text-success-700 font-semibold'  },
+  absent:    { label: 'Absent',    className: 'badge bg-danger-100 text-danger-700 font-semibold'   },
+  'half-day':{ label: 'Half Day',  className: 'badge bg-warning-100 text-warning-700 font-semibold' },
+  'half_day':{ label: 'Half Day',  className: 'badge bg-warning-100 text-warning-700 font-semibold' },
+  leave:     { label: 'On Leave',  className: 'badge bg-primary-100 text-primary-700 font-semibold'    },
   // Leave statuses
-  pending:   { label: 'Pending',   className: 'badge-pending'  },
-  approved:  { label: 'Approved',  className: 'badge-approved' },
-  rejected:  { label: 'Rejected',  className: 'badge-rejected' },
+  pending:   { label: 'Pending',   className: 'badge bg-warning-100 text-warning-700 font-semibold'  },
+  approved:  { label: 'Approved',  className: 'badge bg-success-100 text-success-700 font-semibold' },
+  rejected:  { label: 'Rejected',  className: 'badge bg-danger-100 text-danger-700 font-semibold' },
 };
 
 export default function StatusBadge({ status }) {
