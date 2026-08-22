@@ -200,26 +200,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Quick links */}
-      <div className="card">
-        <h3 className="section-title mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'My Profile',  href: '/employee/profile',    icon: '👤', id: 'qa-profile' },
-            { label: 'Attendance',  href: '/employee/attendance',  icon: '📅', id: 'qa-attendance' },
-            { label: 'Apply Leave', href: '/employee/leave',       icon: '🏖️', id: 'qa-leave' },
-            { label: 'Payroll',     href: '/employee/payroll',     icon: '💰', id: 'qa-payroll' },
-          ].map(({ label, href, icon, id }) => (
-            <a
-              key={id} id={id} href={href}
-              className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-xl hover:bg-primary-50 hover:text-primary-700 transition-colors text-gray-600 text-sm font-medium"
-            >
-              <span className="text-2xl">{icon}</span>
-              {label}
-            </a>
-          ))}
-        </div>
-      </div>
+
     </div>
   );
 }

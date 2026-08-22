@@ -60,18 +60,7 @@ export default function Layout() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Quick Switch Button (Useful for demonstrating dual screens in Hackathons) */}
-            <Link
-              to={isAdmin ? '/employee/dashboard' : '/admin/dashboard'}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all duration-150 shadow-sm ${
-                isAdmin 
-                  ? 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:bg-indigo-100'
-                  : 'bg-primary-50 border-primary-100 text-primary-700 hover:bg-primary-100'
-              }`}
-              title={isAdmin ? 'Switch to Employee Portal' : 'Switch to HR Admin Portal'}
-            >
-              <span>👤 View as {isAdmin ? 'Employee' : 'HR Officer'}</span>
-            </Link>
+
 
             {/* Notification Bell */}
             <button className="relative p-2 rounded-lg text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors focus:outline-none" aria-label="Notifications">
